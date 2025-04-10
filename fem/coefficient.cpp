@@ -129,8 +129,8 @@ real_t PWCoefficient::Eval(ElementTransformation &T,
 real_t FunctionCoefficient::Eval(ElementTransformation & T,
                                  const IntegrationPoint & ip)
 {
-   real_t x[3];
-   Vector transip(x, 3);
+   real_t x[Geometry::MaxDim];
+   Vector transip(x, Geometry::MaxDim);
 
    T.Transform(ip, transip);
 
@@ -366,8 +366,8 @@ void PositionVectorCoefficient::Eval(Vector &V, ElementTransformation &T,
 void VectorFunctionCoefficient::Eval(Vector &V, ElementTransformation &T,
                                      const IntegrationPoint &ip)
 {
-   real_t x[3];
-   Vector transip(x, 3);
+   real_t x[Geometry::MaxDim];
+   Vector transip(x, Geometry::MaxDim);
 
    T.Transform(ip, transip);
 

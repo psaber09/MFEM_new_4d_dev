@@ -12,6 +12,7 @@
 list(APPEND ALL_EXE_SRCS
   ex0.cpp
   ex1.cpp
+  ex1_H1.cpp
   ex2.cpp
   ex3.cpp
   ex4.cpp

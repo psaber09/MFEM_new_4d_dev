@@ -58,8 +58,8 @@ DofsToVDofs<Ordering::byVDIM>(int ndofs, int vdim, Array<int> &dofs)
 
 FiniteElementSpace::FiniteElementSpace()
    : mesh(NULL), fec(NULL), vdim(0), ordering(Ordering::byNODES),
-     ndofs(0), nvdofs(0), nedofs(0), nfdofs(0), nbdofs(0),
-     bdofs(NULL),
+     ndofs(0), nvdofs(0), nedofs(0), nfdofs(0), nbdofs(0), npdofs(0),
+     bdofs(NULL), pdofs(NULL),
      elem_dof(NULL), elem_fos(NULL), bdr_elem_dof(NULL), bdr_elem_fos(NULL),
      face_dof(NULL),
      NURBSext(NULL), own_ext(false),
@@ -364,6 +364,12 @@ void FiniteElementSpace::GetFaceVDofs(int i, Array<int> &vdofs) const
    DofsToVDofs(vdofs);
 }
 
+void FiniteElementSpace::GetPlanarVDofs(int i, Array<int> &vdofs) const
+{
+   GetPlanarDofs(i, vdofs);
+   DofsToVDofs(vdofs);
+}
+
 void FiniteElementSpace::GetEdgeVDofs(int i, Array<int> &vdofs) const
 {
    GetEdgeDofs(i, vdofs);
@@ -610,7 +616,7 @@ void FiniteElementSpace::GetEssentialVDofs(const Array<int> &bdr_attr_is_ess,
    // local DOFs affected by boundary elements on other processors
    if (Nonconforming())
    {
-      Array<int> bdr_verts, bdr_edges, bdr_faces;
+      Array<int> bdr_verts, bdr_edges, bdr_faces, bdr_planars;
       mesh->ncmesh->GetBoundaryClosure(bdr_attr_is_ess, bdr_verts, bdr_edges,
                                        bdr_faces);
       for (auto v : bdr_verts)
@@ -639,6 +645,35 @@ void FiniteElementSpace::GetEssentialVDofs(const Array<int> &bdr_attr_is_ess,
          }
          MarkDofs(dofs, ess_vdofs);
       }
+       for (auto p : bdr_planars)
+       {
+          if (component < 0)
+          {
+             GetPlanarVDofs(p, dofs);
+          }
+          else
+          {
+             GetPlanarVDofs(p, dofs);
+             for (auto &d : dofs) { d = DofToVDof(d, component); }
+          }
+          MarkDofs(dofs, ess_vdofs);
+
+       }
+//       for (int i = 0; i < bdr_planars.Size(); i++)
+//       {
+//          if (component < 0)
+//          {
+//             GetPlanarVDofs(bdr_planars[i], vdofs);
+//             mark_dofs(vdofs, ess_vdofs);
+//          }
+//          else
+//          {
+//             GetPlanarVDofs(bdr_planars[i], dofs);
+//             for (int d = 0; d < dofs.Size(); d++)
+//             { dofs[d] = DofToVDof(dofs[d], component); }
+//             MarkDofs(dofs, ess_vdofs);
+//          }
+//       }
       for (auto f : bdr_faces)
       {
          if (component < 0)
@@ -1182,6 +1217,8 @@ void FiniteElementSpace::BuildConformingInterpolation() const
                "This method should not be used with a ParFiniteElementSpace!");
 #endif
 
+   if (mesh->Dimension() == 4) { BuildConformingInterpolation4D(); return; }
+
    if (cP_is_set) { return; }
    cP_is_set = true;
 
@@ -1424,6 +1461,179 @@ void FiniteElementSpace::BuildConformingInterpolation() const
       if (cR_hp) { MakeVDimMatrix(*cR_hp); }
    }
 }
+
+void FiniteElementSpace::BuildConformingInterpolation4D() const
+{
+   #if 0
+#ifdef MFEM_USE_MPI
+   MFEM_VERIFY(dynamic_cast<const ParFiniteElementSpace*>(this) == NULL,
+               "This method should not be used with a ParFiniteElementSpace!");
+#endif
+
+   if (cP_is_set) { return; }
+   cP_is_set = true;
+
+   // For each slave DOF, the dependency matrix will contain a row that
+   // expresses the slave DOF as a linear combination of its immediate master
+   // DOFs. Rows of independent DOFs will remain empty.
+   SparseMatrix deps(ndofs);
+
+   // collect local edge/planar/face dependencies
+   for (int entity = 1; entity <= 3; entity++)
+   {
+      const NCMesh::NCList &list = (entity > 2) ? mesh->ncmesh->GetFaceList()
+                                   /*        */ : ( (entity > 1) ? mesh->ncmesh->GetPlanarList() :
+                                                    mesh->ncmesh->GetEdgeList() );
+      if (!list.masters.size()) { continue; }
+
+      IsoparametricTransformation T;
+      if (entity > 2) { T.SetFE(&TetrahedronFE); }
+      else if (entity > 1) { T.SetFE(&TriangleFE); }
+      else { T.SetFE(&SegmentFE); }
+
+      Geometry::Type geom = (entity > 2) ? Geometry::TETRAHEDRON : ( (
+                                                                        entity > 1) ? Geometry::TRIANGLE : Geometry::SEGMENT );
+      const FiniteElement* fe = fec->FiniteElementForGeometry(geom);
+      if (!fe) { continue; }
+
+      Array<int> master_dofs, slave_dofs;
+      DenseMatrix I(fe->GetDof());
+
+      // loop through all master edges/faces, constrain their slave edges/faces
+      for (unsigned mi = 0; mi < list.masters.size(); mi++)
+      {
+         const NCMesh::Master &master = list.masters[mi];
+         GetEntityDofs4D(entity, master.index, master_dofs);
+         if (!master_dofs.Size()) { continue; }
+
+         //         mfem::out << "--------------------\n";
+         //         master_dofs.Print(mfem::out,master_dofs.Size());
+
+         for (int si = master.slaves_begin; si < master.slaves_end; si++)
+         {
+            const NCMesh::Slave &slave = list.slaves[si];
+            GetEntityDofs4D(entity, slave.index, slave_dofs);
+            if (!slave_dofs.Size()) { continue; }
+
+            slave.OrientedPointMatrix(T.GetPointMat());
+            T.FinalizeTransformation();
+            fe->GetLocalInterpolation(T, I);
+
+            //            mfem::out << "********************\n";
+            //            slave_dofs.Print(mfem::out,slave_dofs.Size());
+            //            mfem::out << "++++++++++++++++++++\n";
+            //            I.PrintMatlab(mfem::out);
+            //            mfem::out << "++++++++++++++++++++\n";
+
+            // make each slave DOF dependent on all master DOFs
+            AddDependencies(deps, master_dofs, slave_dofs, I);
+         }
+      }
+   }
+
+   deps.Finalize();
+   //   deps.PrintMatlab(mfem::out);
+
+   // DOFs that stayed independent are true DOFs
+   int n_true_dofs = 0;
+   for (int i = 0; i < ndofs; i++)
+   {
+      if (!deps.RowSize(i)) { n_true_dofs++; }
+   }
+
+   // if all dofs are true dofs leave cP and cR NULL
+   if (n_true_dofs == ndofs)
+   {
+      cP = cR = NULL; // will be treated as identities
+      return;
+   }
+
+   // create the conforming restriction matrix cR
+   int *cR_J;
+   {
+      int *cR_I = new int[n_true_dofs+1];
+      double *cR_A = new double[n_true_dofs];
+      cR_J = new int[n_true_dofs];
+      for (int i = 0; i < n_true_dofs; i++)
+      {
+         cR_I[i] = i;
+         cR_A[i] = 1.0;
+      }
+      cR_I[n_true_dofs] = n_true_dofs;
+      cR = new SparseMatrix(cR_I, cR_J, cR_A, n_true_dofs, ndofs);
+   }
+
+   // create the conforming prolongation matrix cP
+   cP = new SparseMatrix(ndofs, n_true_dofs);
+
+   Array<bool> finalized(ndofs);
+   finalized = false;
+
+   // put identity in the restriction and prolongation matrices for true DOFs
+   for (int i = 0, true_dof = 0; i < ndofs; i++)
+   {
+      if (!deps.RowSize(i))
+      {
+         cR_J[true_dof] = i;
+         cP->Add(i, true_dof++, 1.0);
+         finalized[i] = true;
+      }
+   }
+
+   // Now calculate cP rows of slave DOFs as combinations of cP rows of their
+   // master DOFs. It is possible that some slave DOFs depend on DOFs that are
+   // themselves slaves. Here we resolve such indirect constraints by first
+   // calculating rows of the cP matrix for DOFs whose master DOF cP rows are
+   // already known (in the first iteration these are the true DOFs). In the
+   // second iteration, slaves of slaves can be 'finalized' (given a row in the
+   // cP matrix), in the third iteration slaves of slaves of slaves, etc.
+   bool finished;
+   int n_finalized = n_true_dofs;
+   Array<int> cols;
+   Vector srow;
+   do
+   {
+      finished = true;
+      for (int dof = 0; dof < ndofs; dof++)
+      {
+         if (!finalized[dof] && DofFinalizable(dof, finalized, deps))
+         {
+            const int* dep_col = deps.GetRowColumns(dof);
+            const double* dep_coef = deps.GetRowEntries(dof);
+            int n_dep = deps.RowSize(dof);
+
+            for (int j = 0; j < n_dep; j++)
+            {
+               cP->GetRow(dep_col[j], cols, srow);
+               srow *= dep_coef[j];
+               cP->AddRow(dof, cols, srow);
+            }
+
+            finalized[dof] = true;
+            n_finalized++;
+            finished = false;
+         }
+      }
+   }
+   while (!finished);
+
+   // if everything is consistent (mesh, face orientations, etc.), we should
+   // be able to finalize all slave DOFs, otherwise it's a serious error
+   if (n_finalized != ndofs)
+   {
+      MFEM_ABORT("Error creating cP matrix.");
+   }
+
+   cP->Finalize();
+
+   if (vdim > 1)
+   {
+      MakeVDimMatrix(*cP);
+      MakeVDimMatrix(*cR);
+   }
+   #endif
+}
+
 
 void FiniteElementSpace::MakeVDimMatrix(SparseMatrix &mat) const
 {
@@ -2625,8 +2835,10 @@ void FiniteElementSpace::UpdateNURBS()
 
    nvdofs = 0;
    nedofs = 0;
+   npdofs = 0;
    nfdofs = 0;
    nbdofs = 0;
+   pdofs = NULL;
    bdofs = NULL;
 
    delete face_dof;
@@ -2760,6 +2972,8 @@ void FiniteElementSpace::Construct()
    face_dof = NULL;
 
    ndofs = 0;
+   npdofs = 0;
+   pdofs = NULL;
    nvdofs = nedofs = nfdofs = nbdofs = 0;
    bdofs = NULL;
 
@@ -2852,6 +3066,24 @@ void FiniteElementSpace::Construct()
          var_face_dofs.Clear(); // ensure any old var_face_dof table is dumped.
       }
    }
+    
+    if (mesh->Dimension() >= 4 && mesh->GetNE())
+    {
+       // Here we assume that all planars in the mesh have the same base
+       // geometry -- the base geometry of the 0-th face element.
+       int pdof = fec->DofForGeometry(mesh->GetPlanarBaseGeometry(0));
+       if (pdof > 0)
+       {
+          pdofs = new int[mesh->GetNPlanars()+1];
+          pdofs[0] = 0;
+          for (int i = 0; i < mesh->GetNPlanars(); i++)
+          {
+             npdofs += pdof;
+             // npdofs += fec->DofForGeometry(mesh->GetPlanarBaseGeometry(i));
+             pdofs[i+1] = npdofs;
+          }
+       }
+    }
 
    // assign internal ("bubble") DOFs
    if (mesh->GetNE() && dim > 0)
@@ -2876,7 +3108,7 @@ void FiniteElementSpace::Construct()
       }
    }
 
-   ndofs = nvdofs + nedofs + nfdofs + nbdofs;
+   ndofs = nvdofs + nedofs + npdofs + nfdofs + nbdofs;
 
    ConstructDoFTransArray();
 
@@ -3423,7 +3655,7 @@ void FiniteElementSpace::GetElementDofs(int elem, Array<int> &dofs,
       return;
    }
 
-   Array<int> V, E, Eo, F, Fo; // TODO: LocalArray
+   Array<int> V, E, Eo, F, Fo, P, Po; // TODO: LocalArray
 
    const int dim = mesh->Dimension();
    const auto geom = mesh->GetElementGeometry(elem);
@@ -3432,9 +3664,13 @@ void FiniteElementSpace::GetElementDofs(int elem, Array<int> &dofs,
    const int nv = fec->GetNumDof(Geometry::POINT, order);
    const int ne = (dim > 1) ? fec->GetNumDof(Geometry::SEGMENT, order) : 0;
    const int nb = (dim > 0) ? fec->GetNumDof(geom, order) : 0;
+   const int np = (dim > 3) ? fec->GetNumDof(Geometry::TRIANGLE, order) : 0;
+
 
    if (nv) { mesh->GetElementVertices(elem, V); }
    if (ne) { mesh->GetElementEdges(elem, E, Eo); }
+   if (np) { mesh->GetElementPlanars(elem, P, Po); }
+
 
    int nfd = 0;
    if (dim > 2 && fec->HasFaceDofs(geom, order))
@@ -3454,7 +3690,7 @@ void FiniteElementSpace::GetElementDofs(int elem, Array<int> &dofs,
    }
 
    dofs.SetSize(0);
-   dofs.Reserve(nv*V.Size() + ne*E.Size() + nfd + nb);
+   dofs.Reserve(nv*V.Size() + ne*E.Size() + np*P.Size() + nfd + nb);
 
    if (nv) // vertex DOFs
    {
@@ -3480,7 +3716,21 @@ void FiniteElementSpace::GetElementDofs(int elem, Array<int> &dofs,
          }
       }
    }
+    
+    if(np)
+    {
+       for (int i = 0; i < P.Size(); i++)
+       {
+          int pbase = /* IsVariableOrder() ? FindEdgeDof(E[i], ne) :  */P[i]*np;
+          const int *ind = fec->GetDofOrdering(Geometry::TRIANGLE, order, Po[i]);
 
+          for (int j = 0; j < np; j++)
+          {
+             dofs.Append(EncodeDof(nvdofs + nedofs + pbase, ind[j]));
+          }
+       }
+    }
+    
    if (nfd) // face DOFs
    {
       for (int i = 0; i < F.Size(); i++)
@@ -3493,7 +3743,7 @@ void FiniteElementSpace::GetElementDofs(int elem, Array<int> &dofs,
 
          for (int j = 0; j < nf; j++)
          {
-            dofs.Append(EncodeDof(nvdofs + nedofs + fbase, ind[j]));
+            dofs.Append(EncodeDof(nvdofs + nedofs + npdofs + fbase, ind[j]));
          }
       }
    }
@@ -3501,7 +3751,7 @@ void FiniteElementSpace::GetElementDofs(int elem, Array<int> &dofs,
    if (nb) // interior ("bubble") DOFs
    {
       int bbase = bdofs ? bdofs[elem] : elem*nb;
-      bbase += nvdofs + nedofs + nfdofs;
+      bbase += nvdofs + nedofs + npdofs + nfdofs;
 
       for (int j = 0; j < nb; j++)
       {
@@ -3539,7 +3789,7 @@ void FiniteElementSpace::GetBdrElementDofs(int bel, Array<int> &dofs,
       return;
    }
 
-   Array<int> V, E, Eo; // TODO: LocalArray
+   Array<int> V, E, Eo, P, Po; // TODO: LocalArray
    int F, oF;
 
    int dim = mesh->Dimension();
@@ -3556,9 +3806,12 @@ void FiniteElementSpace::GetBdrElementDofs(int bel, Array<int> &dofs,
    int nv = fec->GetNumDof(Geometry::POINT, order);
    int ne = (dim > 1) ? fec->GetNumDof(Geometry::SEGMENT, order) : 0;
    int nf = (dim > 2) ? fec->GetNumDof(geom, order) : 0;
+   int np = (dim > 3) ? fec->DofForGeometry(Geometry::TRIANGLE) : (0);
+
 
    if (nv) { mesh->GetBdrElementVertices(bel, V); }
    if (ne) { mesh->GetBdrElementEdges(bel, E, Eo); }
+   if (np) { mesh->GetBdrElementPlanars(bel, P, Po); }
    if (nf)
    {
       mesh->GetBdrElementFace(bel, &F, &oF);
@@ -3575,7 +3828,7 @@ void FiniteElementSpace::GetBdrElementDofs(int bel, Array<int> &dofs,
    }
 
    dofs.SetSize(0);
-   dofs.Reserve(nv*V.Size() + ne*E.Size() + nf);
+   dofs.Reserve(nv*V.Size() + ne*E.Size() + np * P.Size() + nf);
 
    if (nv) // vertex DOFs
    {
@@ -3601,6 +3854,20 @@ void FiniteElementSpace::GetBdrElementDofs(int bel, Array<int> &dofs,
          }
       }
    }
+    
+    if(np)
+    {
+       for (int i = 0; i < P.Size(); i++)
+       {
+          int pbase = /* IsVariableOrder() ? FindEdgeDof(E[i], ne) :  */P[i]*np;
+          const int *ind = fec->GetDofOrdering(Geometry::TRIANGLE, order, Po[i]);
+
+          for (int j = 0; j < np; j++)
+          {
+             dofs.Append(EncodeDof(nvdofs + nedofs + pbase, ind[j]));
+          }
+       }
+    }
 
    if (nf) // face DOFs
    {
@@ -3671,10 +3938,13 @@ int FiniteElementSpace::GetFaceDofs(int face, Array<int> &dofs,
    // for 1D, 2D and 3D faces
    int nv = fec->GetNumDof(Geometry::POINT, order);
    int ne = (dim > 1) ? fec->GetNumDof(Geometry::SEGMENT, order) : 0;
+   int np = (dim > 3) ? fec->GetNumDof(Geometry::TRIANGLE, order) : 0;
 
-   Array<int> V, E, Eo;
+
+   Array<int> V, E, Eo, P, Po;
    if (nv) { mesh->GetFaceVertices(face, V); }
    if (ne) { mesh->GetFaceEdges(face, E, Eo); }
+   if (np) { mesh->GetFacePlanars(face, P, Po); }
 
    dofs.SetSize(0);
    dofs.Reserve(V.Size() * nv + E.Size() * ne + nf);
@@ -3702,13 +3972,92 @@ int FiniteElementSpace::GetFaceDofs(int face, Array<int> &dofs,
          }
       }
    }
+    if(np)
+    {
+       for (int i = 0; i < P.Size(); i++)
+       {
+          int pbase = /* IsVariableOrder() ? FindEdgeDof(E[i], ne) :  */P[i]*np;
+          const int *ind = fec->GetDofOrdering(Geometry::TRIANGLE, order, Po[i]);
+
+          for (int j = 0; j < np; j++)
+          {
+             dofs.Append(EncodeDof(nvdofs + nedofs + pbase, ind[j]));
+          }
+       }
+    }
    for (int j = 0; j < nf; j++)
    {
-      dofs.Append(nvdofs + nedofs + fbase + j);
+       dofs.Append(nvdofs + nedofs + npdofs + fbase + j);
    }
 
    return order;
 }
+
+void FiniteElementSpace::GetPlanarDofs(int planar, Array<int> &dofs) const
+{
+   MFEM_VERIFY(!orders_changed, msg_orders_changed);
+
+   // if (planar_dof)
+   // {
+   //    planar_dof->GetRow(planar, dofs);
+   //    return;
+   // }
+
+   Array<int> V, E, Eo; // TODO: LocalArray
+
+   int dim = mesh->Dimension();
+   int order = fec->GetOrder();
+
+   // if (IsVariableOrder()) // determine order from adjacent element
+   // {
+   //    int elem, info;
+   //    mesh->GetBdrElementAdjacentElement(bel, elem, info);
+   //    order = elem_order[elem];
+   // }
+
+   int nv = fec->GetNumDof(Geometry::POINT, order);
+   int ne = (dim > 1) ? fec->GetNumDof(Geometry::SEGMENT, order) : 0;
+   int np = fec->GetNumDof(Geometry::TRIANGLE, order);
+
+   if (nv) { mesh->GetPlanVertices(planar, V); }
+   if (ne) { mesh->GetPlanarEdges(planar, E, Eo); }
+
+   dofs.SetSize(0);
+   dofs.Reserve(nv*V.Size() + ne*E.Size() + np);
+
+   if (nv) // vertex DOFs
+   {
+      for (int i = 0; i < V.Size(); i++)
+      {
+         for (int j = 0; j < nv; j++)
+         {
+            dofs.Append(V[i]*nv + j);
+         }
+      }
+   }
+
+   if (ne) // edge DOFs
+   {
+      for (int i = 0; i < E.Size(); i++)
+      {
+         int ebase = IsVariableOrder() ? FindEdgeDof(E[i], ne) : E[i]*ne;
+         const int *ind = fec->GetDofOrdering(Geometry::SEGMENT, order, Eo[i]);
+
+         for (int j = 0; j < ne; j++)
+         {
+            dofs.Append(EncodeDof(nvdofs + ebase, ind[j]));
+         }
+      }
+   }
+
+   int pbase = planar*np;
+   for (int i = 0; i < np; i++)
+   {
+      dofs.Append(nvdofs + nedofs + pbase + i);
+   }
+
+}
+
 
 int FiniteElementSpace::GetEdgeDofs(int edge, Array<int> &dofs,
                                     int variant) const
@@ -3776,7 +4125,7 @@ void FiniteElementSpace::GetElementInteriorDofs(int i, Array<int> &dofs) const
    int base = bdofs ? bdofs[i] : i*nb;
 
    dofs.SetSize(nb);
-   base += nvdofs + nedofs + nfdofs;
+   base += nvdofs + nedofs + npdofs + nfdofs;
    for (int j = 0; j < nb; j++)
    {
       dofs[j] = base + j;
@@ -3941,6 +4290,11 @@ const FiniteElement *FiniteElementSpace::GetFaceElement(int i) const
    return fe;
 }
 
+const FiniteElement *FiniteElementSpace::GetPlanarElement(int i) const
+{
+   return fec->FiniteElementForGeometry(mesh->GetPlanarBaseGeometry(i));
+}
+
 const FiniteElement *FiniteElementSpace::GetEdgeElement(int i,
                                                         int variant) const
 {
@@ -4026,6 +4380,7 @@ void FiniteElementSpace::Destroy()
       delete bdr_elem_dof;
       delete bdr_elem_fos;
       delete face_dof;
+      delete [] pdofs;
       delete [] bdofs;
    }
    ceed::RemoveBasisAndRestriction(this);

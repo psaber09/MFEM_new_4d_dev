@@ -109,8 +109,23 @@ int FiniteElementCollection::HasFaceDofs(Geometry::Type geom, int p) const
       case Geometry::PYRAMID:
          return max(GetNumDof(Geometry::TRIANGLE, p),
                     GetNumDof(Geometry::SQUARE, p));
+      case Geometry::PENTATOPE:   return DofForGeometry (Geometry::TETRAHEDRON);
+      case Geometry::TESSERACT:   return DofForGeometry (Geometry::CUBE);
       default:
          MFEM_ABORT("unknown geometry type");
+   }
+   return 0;
+}
+
+int FiniteElementCollection::HasPlanarDofs(Geometry::Type GeomType) const
+{
+   switch (GeomType)
+   {
+      case Geometry::PENTATOPE:   return DofForGeometry (Geometry::TRIANGLE);
+      case Geometry::TESSERACT:   return DofForGeometry (Geometry::SQUARE);
+      default:
+         mfem_error ("FiniteElementCollection::HasPlanarDofs:"
+                     " unknown geometry type.");
    }
    return 0;
 }
@@ -693,6 +708,8 @@ LinearFECollection::FiniteElementForGeometry(Geometry::Type GeomType) const
       case Geometry::CUBE:        return &ParallelepipedFE;
       case Geometry::PRISM:       return &WedgeFE;
       case Geometry::PYRAMID:     return &PyramidFE;
+      case Geometry::PENTATOPE:   return &PentatopeFE;
+      case Geometry::TESSERACT:   return &TesseractFE;
       default:
          if (error_mode == RETURN_NULL) { return nullptr; }
          mfem_error ("LinearFECollection: unknown geometry type.");
@@ -1693,7 +1710,7 @@ H1_FECollection::H1_FECollection(const int p, const int dim, const int btype,
    , dim(dim)
 {
    MFEM_VERIFY(p >= 1, "H1_FECollection requires order >= 1.");
-   MFEM_VERIFY(dim >= 0 && dim <= 3, "H1_FECollection requires 0 <= dim <= 3.");
+   MFEM_VERIFY(dim >= 0 && dim <= 4, "H1_FECollection requires 0 <= dim <= 4.");
 
    const int pm1 = p - 1, pm2 = pm1 - 1, pm3 = pm2 - 1, pm4 = pm3 - 1;
 
@@ -2013,6 +2030,21 @@ H1_FECollection::H1_FECollection(const int p, const int dim, const int btype,
                }
             }
          }
+          
+          
+          if (dim >= 4)
+          {
+             H1_dof[Geometry::PENTATOPE] = (TriDof*pm3*pm4)/12;
+             H1_dof[Geometry::TESSERACT] = QuadDof*pm1*pm1;
+             if (b_type == BasisType::Positive)
+             {
+                mfem_error("H1_FECollection: BasisType::Positive not implemented");
+             }
+             else
+             {
+                H1_Elements[Geometry::PENTATOPE] = new H1_PentatopeElement(p, pt_type);
+             }
+          }
       }
    }
 }
@@ -2394,6 +2426,36 @@ L2_FECollection::L2_FECollection(const int p, const int dim, const int btype,
          OtherDofOrd[j] = j; // for Or == 0
       }
    }
+   else if (dim == 4)
+      {
+         if (b_type == BasisType::Positive)
+         {
+            mfem::err <<
+                      "L2_FECollection::L2_FECollection : BasisType::Positive not implemented" <<
+                      endl;
+            mfem_error();
+         }
+         else
+         {
+            L2_Elements[Geometry::PENTATOPE] =
+               new L2_PentatopeElement(p, btype);
+            L2_Elements[Geometry::TESSERACT] = new L2_HexahedronElement(p, btype);
+         }
+         L2_Elements[Geometry::PENTATOPE]->SetMapType(map_type);
+         L2_Elements[Geometry::TESSERACT]->SetMapType(map_type);
+         // All trace element use the default Gauss-Legendre nodal points
+         Tr_Elements[Geometry::TETRAHEDRON] = new L2_TetrahedronElement(p);
+         Tr_Elements[Geometry::CUBE] = new L2_HexahedronElement(p);
+
+         const int PentDof = L2_Elements[Geometry::PENTATOPE]->GetDof();
+         const int TessDof = L2_Elements[Geometry::TESSERACT]->GetDof();
+         const int MaxDof = std::max(PentDof, TessDof);
+         OtherDofOrd = new int[MaxDof];
+         for (int j = 0; j < MaxDof; j++)
+         {
+            OtherDofOrd[j] = j; // for Or == 0
+         }
+      }
    else
    {
       mfem::err << "L2_FECollection::L2_FECollection : dim = "
@@ -2506,6 +2568,13 @@ RT_FECollection::RT_FECollection(const int order, const int dim,
       RT_Elements[Geometry::PYRAMID] = new RT_FuentesPyramidElement(p);
       RT_dof[Geometry::PYRAMID] = 3*p*pp1*pp1;
    }
+   else if (dim == 4)
+   {
+      RT_Elements[Geometry::PENTATOPE] = new RT_PentatopeElement(p);
+      RT_dof[Geometry::PENTATOPE] = p*pp1*(p + 2)*(p + 3)/6;
+
+      //TODO: tesseracts
+   }
    else
    {
       MFEM_ABORT("invalid dim = " << dim);
@@ -2538,7 +2607,7 @@ void RT_FECollection::InitFaces(const int p, const int dim_,
    MFEM_VERIFY(Quadrature1D::CheckOpen(op_type) != Quadrature1D::Invalid,
                "invalid open point type");
 
-   const int pp1 = p + 1, pp2 = p + 2;
+   const int pp1 = p + 1, pp2 = p + 2, pp3 = p+3;
 
    for (int g = 0; g < Geometry::NumGeom; g++)
    {
@@ -2557,6 +2626,10 @@ void RT_FECollection::InitFaces(const int p, const int dim_,
    for (int i = 0; i < 8; i++)
    {
       QuadDofOrd[i] = NULL;
+   }
+   for (int i = 0; i < 24; i++)
+   {
+      TetDofOrd[i] = NULL;
    }
 
    if (dim_ == 2)
@@ -2646,6 +2719,89 @@ void RT_FECollection::InitFaces(const int p, const int dim_,
          }
       }
    }
+   else if (dim == 4)
+   {
+      L2_TetrahedronElement *l2_tet = new L2_TetrahedronElement(p, ob_type);
+      l2_tet->SetMapType(map_type);
+      RT_Elements[Geometry::TETRAHEDRON] = l2_tet;
+      RT_dof[Geometry::TETRAHEDRON] = pp1*pp2*pp3/6;
+
+      int TetDof = RT_dof[Geometry::TETRAHEDRON];
+      int TriDof2 = pp2*pp1/2;
+      TetDofOrd[0] = new int[24*TetDof];
+      for (int i = 1; i < 24; i++)
+      {
+         TetDofOrd[i] = TetDofOrd[i-1] + TetDof;
+      }
+      // see Mesh::GetTriOrientation in mesh/mesh.cpp,
+      // the constructor of H1_FECollection
+      for (int k=0; k<=p; k++)
+      {
+         for (int j=0; j+k<=p; j++)
+         {
+            for (int i=0; i+j+k<=p; i++)
+            {
+               int o = TetDof + TriDof2 - ((pp3-k)*(pp2-k)*(pp1-k))/6 - (pp2-j)*
+                       (pp1-j)/2 - k*j + i;
+               int l = p-k-j-i;
+               TetDofOrd[0][o] = o;
+               TetDofOrd[1][o] =  -1 - (TetDof + TriDof2 - ((pp3-k)*(pp2-k)*(pp1-k))/6 -
+                                        (pp2-j)*(pp1-j)/2 - k*j + l);
+               TetDofOrd[2][o] =        TetDof + TriDof2 - ((pp3-k)*(pp2-k)*(pp1-k))/6 -
+                                        (pp2-i)*(pp1-i)/2 - k*i + l;
+               TetDofOrd[3][o] =  -1 - (TetDof + TriDof2 - ((pp3-k)*(pp2-k)*(pp1-k))/6 -
+                                        (pp2-l)*(pp1-l)/2 - k*l + i);
+               TetDofOrd[4][o] =        TetDof + TriDof2 - ((pp3-k)*(pp2-k)*(pp1-k))/6 -
+                                        (pp2-l)*(pp1-l)/2 - k*l + j;
+               TetDofOrd[5][o] =  -1 - (TetDof + TriDof2 - ((pp3-k)*(pp2-k)*(pp1-k))/6 -
+                                        (pp2-i)*(pp1-i)/2 - k*i + j);
+               TetDofOrd[6][o] =        TetDof + TriDof2 - ((pp3-j)*(pp2-j)*(pp1-j))/6 -
+                                        (pp2-i)*(pp1-i)/2 - j*i + k;
+               TetDofOrd[7][o] =  -1 - (TetDof + TriDof2 - ((pp3-j)*(pp2-j)*(pp1-j))/6 -
+                                        (pp2-l)*(pp1-l)/2 - j*l + k);
+               TetDofOrd[8][o] =        TetDof + TriDof2 - ((pp3-i)*(pp2-i)*(pp1-i))/6 -
+                                        (pp2-l)*(pp1-l)/2 - i*l + k;
+               TetDofOrd[9][o] =  -1 - (TetDof + TriDof2 - ((pp3-l)*(pp2-l)*(pp1-l))/6 -
+                                        (pp2-i)*(pp1-i)/2 - l*i + k);
+               TetDofOrd[10][o] =       TetDof + TriDof2 - ((pp3-l)*(pp2-l)*(pp1-l))/6 -
+                                        (pp2-j)*(pp1-j)/2 - l*j + k;
+               TetDofOrd[11][o] = -1 - (TetDof + TriDof2 - ((pp3-i)*(pp2-i)*(pp1-i))/6 -
+                                        (pp2-j)*(pp1-j)/2 - i*j + k);
+               TetDofOrd[12][o] =       TetDof + TriDof2 - ((pp3-i)*(pp2-i)*(pp1-i))/6 -
+                                        (pp2-k)*(pp1-k)/2 - i*k + j;
+               TetDofOrd[13][o] = -1 - (TetDof + TriDof2 - ((pp3-l)*(pp2-l)*(pp1-l))/6 -
+                                        (pp2-k)*(pp1-k)/2 - l*k + j);
+               TetDofOrd[14][o] =       TetDof + TriDof2 - ((pp3-l)*(pp2-l)*(pp1-l))/6 -
+                                        (pp2-k)*(pp1-k)/2 - l*k + i;
+               TetDofOrd[15][o] = -1 - (TetDof + TriDof2 - ((pp3-i)*(pp2-i)*(pp1-i))/6 -
+                                        (pp2-k)*(pp1-k)/2 - i*k + l);
+               TetDofOrd[16][o] =       TetDof + TriDof2 - ((pp3-j)*(pp2-j)*(pp1-j))/6 -
+                                        (pp2-k)*(pp1-k)/2 - j*k + l;
+               TetDofOrd[17][o] = -1 - (TetDof + TriDof2 - ((pp3-j)*(pp2-j)*(pp1-j))/6 -
+                                        (pp2-k)*(pp1-k)/2 - j*k + i);
+               TetDofOrd[18][o] =       TetDof + TriDof2 - ((pp3-j)*(pp2-j)*(pp1-j))/6 -
+                                        (pp2-l)*(pp1-l)/2 - j*l + i;
+               TetDofOrd[19][o] = -1 - (TetDof + TriDof2 - ((pp3-j)*(pp2-j)*(pp1-j))/6 -
+                                        (pp2-i)*(pp1-i)/2 - j*i + l);
+               TetDofOrd[20][o] =       TetDof + TriDof2 - ((pp3-i)*(pp2-i)*(pp1-i))/6 -
+                                        (pp2-j)*(pp1-j)/2 - i*j + l;
+               TetDofOrd[21][o] = -1 - (TetDof + TriDof2 - ((pp3-l)*(pp2-l)*(pp1-l))/6 -
+                                        (pp2-j)*(pp1-j)/2 - l*j + i);
+               TetDofOrd[22][o] =       TetDof + TriDof2 - ((pp3-l)*(pp2-l)*(pp1-l))/6 -
+                                        (pp2-i)*(pp1-i)/2 - l*i + j;
+               TetDofOrd[23][o] = -1 - (TetDof + TriDof2 - ((pp3-i)*(pp2-i)*(pp1-i))/6 -
+                                        (pp2-l)*(pp1-l)/2 - i*l + j);
+               if (!signs)
+               {
+                  for (int m = 0; m < 24; m+=2)
+                  {
+                     TetDofOrd[m][o] = -1 - TetDofOrd[m][o];
+                  }
+               }
+            }
+         }
+      }
+   }
 }
 
 const FiniteElement *
@@ -2668,6 +2824,10 @@ const int *RT_FECollection::DofOrderForOrientation(Geometry::Type GeomType,
    else if (GeomType == Geometry::SQUARE)
    {
       return QuadDofOrd[Or%8];
+   }
+   else if (GeomType == Geometry::TETRAHEDRON)
+   {
+      return TetDofOrd[Or%24];
    }
    return NULL;
 }

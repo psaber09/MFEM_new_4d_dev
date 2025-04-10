@@ -835,6 +835,178 @@ void L2_TetrahedronElement::ProjectDelta(int vertex, Vector &dofs) const
    }
 }
 
+L2_PentatopeElement::L2_PentatopeElement(const int p, const int _type)
+   : NodalFiniteElement(4, Geometry::PENTATOPE,
+                        ((p + 1)*(p + 2)*(p + 3)*(p + 4))/24,
+                        p, FunctionSpace::Pk), T(dof)
+{
+   const double *op;
+
+   type = _type;
+   switch (type)
+   {
+      case 0: op = poly1d.OpenPoints(p); break;
+      case 1:
+      default: op = poly1d.ClosedPoints(p);
+   }
+
+#ifndef MFEM_THREAD_SAFE
+   shape_x.SetSize(p + 1);
+   shape_y.SetSize(p + 1);
+   shape_z.SetSize(p + 1);
+   shape_t.SetSize(p + 1);
+   shape_l.SetSize(p + 1);
+   dshape_x.SetSize(p + 1);
+   dshape_y.SetSize(p + 1);
+   dshape_z.SetSize(p + 1);
+   dshape_t.SetSize(p + 1);
+   dshape_l.SetSize(p + 1);
+   u.SetSize(dof);
+   du.SetSize(dof, dim);
+#else
+   Vector shape_x(p + 1), shape_y(p + 1), shape_z(p + 1), shape_t(p + 1),
+          shape_l(p + 1);
+#endif
+
+   for (int o = 0, l = 0; l <= p; l++)
+      for (int k = 0; l + k <= p; k++)
+         for (int j = 0; j + l + k <= p; j++)
+            for (int i = 0; i + j + l + k <= p; i++)
+            {
+               double w = op[i] + op[j] + op[k] + op[l] + op[p-i-j-k-l];
+               Nodes.IntPoint(o++).Set4(op[i]/w, op[j]/w, op[k]/w, op[l]/w);
+            }
+
+   for (int m = 0; m < dof; m++)
+   {
+      IntegrationPoint &ip = Nodes.IntPoint(m);
+      poly1d.CalcBasis(p, ip.x, shape_x);
+      poly1d.CalcBasis(p, ip.y, shape_y);
+      poly1d.CalcBasis(p, ip.z, shape_z);
+      poly1d.CalcBasis(p, ip.t, shape_t);
+      poly1d.CalcBasis(p, 1. - ip.x - ip.y - ip.z - ip.t, shape_l);
+
+      for (int o = 0, l = 0; l <= p; l++)
+         for (int k = 0; l + k <= p; k++)
+            for (int j = 0; j + l + k <= p; j++)
+               for (int i = 0; i + j + l + k <= p; i++)
+               {
+                  T(o++, m) = shape_x(i)*shape_y(j)*shape_z(k)*shape_t(l)*shape_l(p-i-j-k-l);
+               }
+   }
+
+   T.Invert();
+}
+
+void L2_PentatopeElement::CalcShape(const IntegrationPoint &ip,
+                                    Vector &shape) const
+{
+   const int p = order;
+
+#ifdef MFEM_THREAD_SAFE
+   Vector shape_x(p + 1), shape_y(p + 1), shape_z(p + 1), shape_l(p + 1);
+   Vector u(Dof);
+#endif
+
+   poly1d.CalcBasis(p, ip.x, shape_x);
+   poly1d.CalcBasis(p, ip.y, shape_y);
+   poly1d.CalcBasis(p, ip.z, shape_z);
+   poly1d.CalcBasis(p, ip.t, shape_t);
+   poly1d.CalcBasis(p, 1. - ip.x - ip.y - ip.z - ip.t, shape_l);
+
+   for (int o = 0, l = 0; l <= p; l++)
+      for (int k = 0; l + k <= p; k++)
+         for (int j = 0; j + l + k <= p; j++)
+            for (int i = 0; i + j + l + k <= p; i++)
+            {
+               u(o++) = shape_x(i)*shape_y(j)*shape_z(k)*shape_t(l)*shape_l(p-i-j-k-l);
+            }
+
+   T.Mult(u, shape);
+}
+
+void L2_PentatopeElement::CalcDShape(const IntegrationPoint &ip,
+                                     DenseMatrix &dshape) const
+{
+   const int p = order;
+
+#ifdef MFEM_THREAD_SAFE
+   Vector  shape_x(p + 1),  shape_y(p + 1),  shape_z(p + 1), shape_t(p + 1),
+           shape_l(p + 1);
+   Vector dshape_x(p + 1), dshape_y(p + 1), dshape_z(p + 1), dshape_t(p + 1),
+          dshape_l(p + 1);
+   DenseMatrix du(Dof, Dim);
+#endif
+
+   poly1d.CalcBasis(p, ip.x, shape_x, dshape_x);
+   poly1d.CalcBasis(p, ip.y, shape_y, dshape_y);
+   poly1d.CalcBasis(p, ip.z, shape_z, dshape_z);
+   poly1d.CalcBasis(p, ip.t, shape_t, dshape_t);
+   poly1d.CalcBasis(p, 1. - ip.x - ip.y - ip.z - ip.t, shape_l, dshape_l);
+
+   for (int o = 0, m = 0; m <= p; m++)
+      for (int k = 0; k + m <= p; k++)
+         for (int j = 0; j + k + m <= p; j++)
+            for (int i = 0; i + j + k + m <= p; i++)
+            {
+               int l = p - i - j - k - m;
+               du(o,0) = ((dshape_x(i)* shape_l(l)) -
+                          ( shape_x(i)*dshape_l(l)))*shape_y(j)*shape_z(k)*shape_t(m);
+               du(o,1) = ((dshape_y(j)* shape_l(l)) -
+                          ( shape_y(j)*dshape_l(l)))*shape_x(i)*shape_z(k)*shape_t(m);
+               du(o,2) = ((dshape_z(k)* shape_l(l)) -
+                          ( shape_z(k)*dshape_l(l)))*shape_x(i)*shape_y(j)*shape_t(m);
+               du(o,3) = ((dshape_t(m)* shape_l(l)) -
+                          ( shape_t(m)*dshape_l(l)))*shape_x(i)*shape_y(j)*shape_z(k);
+               o++;
+            }
+
+   Mult(T, du, dshape);
+}
+
+void L2_PentatopeElement::ProjectDelta(int vertex, Vector &dofs) const
+{
+   switch (vertex)
+   {
+      case 0:
+         for (int i = 0; i < dof; i++)
+         {
+            const IntegrationPoint &ip = Nodes.IntPoint(i);
+            dofs[i] = pow(1.0 - ip.x - ip.y - ip.z - ip.t, order);
+         }
+         break;
+      case 1:
+         for (int i = 0; i < dof; i++)
+         {
+            const IntegrationPoint &ip = Nodes.IntPoint(i);
+            dofs[i] = pow(ip.x, order);
+         }
+         break;
+      case 2:
+         for (int i = 0; i < dof; i++)
+         {
+            const IntegrationPoint &ip = Nodes.IntPoint(i);
+            dofs[i] = pow(ip.y, order);
+         }
+         break;
+      case 3:
+         for (int i = 0; i < dof; i++)
+         {
+            const IntegrationPoint &ip = Nodes.IntPoint(i);
+            dofs[i] = pow(ip.z, order);
+         }
+         break;
+      case 4:
+         for (int i = 0; i < dof; i++)
+         {
+            const IntegrationPoint &ip = Nodes.IntPoint(i);
+            dofs[i] = pow(ip.t, order);
+         }
+         break;
+   }
+}
+
+
 
 L2_WedgeElement::L2_WedgeElement(const int p, const int btype)
    : NodalFiniteElement(3, Geometry::PRISM, ((p + 1)*(p + 1)*(p + 2))/2,

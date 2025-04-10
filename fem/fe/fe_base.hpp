@@ -264,7 +264,7 @@ protected:
 
 public:
    /// Enumeration for range_type and deriv_range_type
-   enum RangeType { UNKNOWN_RANGE_TYPE = -1, SCALAR, VECTOR };
+   enum RangeType { UNKNOWN_RANGE_TYPE = -1, SCALAR, VECTOR, MAT_SKEW };
 
    /** @brief Enumeration for MapType: defines how reference functions are
        mapped to physical space.

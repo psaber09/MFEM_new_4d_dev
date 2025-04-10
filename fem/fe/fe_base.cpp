@@ -1015,6 +1015,12 @@ void VectorFiniteElement::SetDerivMembers()
       case H_CURL:
          switch (dim)
          {
+            case 4: // curl: 4D H_CURL -> 4D H_DIV(skew)
+//               deriv_type = CURL;
+//               deriv_range_type = MAT_SKEW;
+//               deriv_map_type = H_DIV_SKEW;
+                 mfem_error("Error: 4D H-curl deriv map not support yet!");
+               break;
             case 3: // curl: 3D H_CURL -> 3D H_DIV
                deriv_type = CURL;
                deriv_range_type = VECTOR;
@@ -1507,7 +1513,7 @@ void VectorFiniteElement::LocalInterpolation_RT(
    for (int k = 0; k < dof; k++)
    {
       Trans.Transform(Nodes.IntPoint(k), xk);
-      ip.Set3(vk);
+      ip.Set4(vk);
       cfe.CalcVShape(ip, vshape);
       // xk = |J| J^{-t} n_k
       adjJ.MultTranspose(nk + d2n[k]*dim, vk);

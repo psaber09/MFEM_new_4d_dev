@@ -42,6 +42,15 @@ struct Hashed4
    int next;
 };
 
+/** A concept for items that should be used in HashTable and be accessible by
+ *  hashing 5 IDs. temporary workaround for 4D (need a structure where all 4 ids a stored)
+ */
+struct Hashed5
+{
+   int p1, p2, p3, p4; // NOTE: p5 is not hashed nor stored
+   int next;
+};
+
 
 /** HashTable is a container for items that require associative access through
  *  pairs (or quadruples) of indices:
@@ -123,6 +132,8 @@ public:
 
       @warning This method should only be called if T inherits from Hashed4. */
    T* Get(int p1, int p2, int p3, int p4 = -1 /* p4 optional */);
+   T* Get(int p1, int p2, int p3, int p4, int p5);
+
 
    /// Get id of item whose parents are p1, p2... Create it if it doesn't exist.
    /** @brief Get the "id" of an item, this "id" corresponding to the index of the
@@ -148,6 +159,8 @@ public:
 
        @warning This method should only be called if T inherits from Hashed4. */
    int GetId(int p1, int p2, int p3, int p4 = -1);
+   int GetId(int p1, int p2, int p3, int p4, int p5);
+
 
    /// Find item whose parents are p1, p2... Return NULL if it doesn't exist.
    /** @brief Item accessor with key (or parents) the pair 'p1', 'p2'. Return
@@ -172,6 +185,8 @@ public:
 
        @warning This method should only be called if T inherits from Hashed4. */
    T* Find(int p1, int p2, int p3, int p4 = -1);
+   T* Find(int p1, int p2, int p3, int p4, int p5);
+
 
    /** @brief Item const accessor with key (or parents) the pair 'p1', 'p2'.
        Return nullptr if no value correspond to the requested key.
@@ -195,6 +210,8 @@ public:
 
        @warning This method should only be called if T inherits from Hashed4. */
    const T* Find(int p1, int p2, int p3, int p4 = -1) const;
+   const T* Find(int p1, int p2, int p3, int p4, int p5) const;
+
 
    /// Find id of item whose parents are p1, p2... Return -1 if it doesn't exist.
    /** @brief Find the "id" of an item, this "id" corresponding to the index of
@@ -220,6 +237,8 @@ public:
 
        @warning This method should only be called if T inherits from Hashed4. */
    int FindId(int p1, int p2, int p3, int p4 = -1) const;
+   int FindId(int p1, int p2, int p3, int p4, int p5) const;
+
 
    /// @brief Return the number of elements currently stored in the HashTable.
    int Size() const { return Base::Size() - unused.Size(); }
@@ -286,6 +305,7 @@ public:
 
        @warning This method should only be called if T inherits from Hashed4. */
    void Reparent(int id, int new_p1, int new_p2, int new_p3, int new_p4 = -1);
+   void Reparent(int id, int new_p1, int new_p2, int new_p3, int new_p4, int new_p5);
 
    /// @brief Return total size of allocated memory (tables plus items), in bytes.
    std::size_t MemoryUsage() const;
@@ -382,6 +402,10 @@ protected:
        @warning This method should only be called if T inherits from Hashed4. */
    inline int Hash(size_t p1, size_t p2, size_t p3) const
    { return (984120265ul*p1 + 125965121ul*p2 + 495698413ul*p3) & mask; }
+    
+   inline int Hash(int p1, int p2, int p3, int p4) const
+   { return (984120265*p1 + 125965121*p2 + 495698413*p3 + 179424673*p4) & mask; }
+
 
    // Delete() and Reparent() use one of these:
    /// @brief Hash function for items of type T that inherit from Hashed2.
@@ -391,6 +415,10 @@ protected:
    /// @brief Hash function for items of type T that inherit from Hashed4.
    inline int Hash(const Hashed4& item) const
    { return Hash(item.p1, item.p2, item.p3); }
+    
+   inline int Hash(const Hashed5& item) const
+   { return Hash(item.p1, item.p2, item.p3, item.p4); };
+
 
    /** @brief Search the index of the item associated to the key (p1,p2)
        starting from the item with index @a id.
@@ -414,6 +442,8 @@ protected:
 
        @warning This method should only be called if T inherits from Hashed4. */
    int SearchList(int id, int p1, int p2, int p3) const;
+   int SearchList(int id, int p1, int p2, int p3, int p4) const;
+
 
    /** @brief Insert the item 'id' into bin 'idx'.
 
@@ -652,6 +682,17 @@ inline void sort4(int &a, int &b, int &c, int &d)
    sort3(b, c, d);
 }
 
+inline void sort5(int &a, int &b, int &c, int &d, int &e)
+{
+   sort4(a,b,c,d);
+   sort4(b,c,d,e);
+
+   if (a > b)
+   {
+      int t = a; a = b; b = t;
+   }
+}
+
 inline void sort4_ext(int &a, int &b, int &c, int &d)
 {
    if (d < 0) // support optional last index
@@ -676,6 +717,12 @@ template<typename T>
 inline T* HashTable<T>::Get(int p1, int p2, int p3, int p4)
 {
    return &(Base::At(GetId(p1, p2, p3, p4)));
+}
+
+template<typename T>
+inline T* HashTable<T>::Get(int p1, int p2, int p3, int p4, int p5)
+{
+   return &(Base::At(GetId(p1, p2, p3, p4, p5)));
 }
 
 template<typename T>
@@ -742,6 +789,40 @@ int HashTable<T>::GetId(int p1, int p2, int p3, int p4)
 }
 
 template<typename T>
+int HashTable<T>::GetId(int p1, int p2, int p3, int p4, int p5)
+{
+   // search for the item in the hashtable
+   internal::sort5(p1, p2, p3, p4, p5);
+   int idx = Hash(p1, p2, p3, p4);
+   int id = SearchList(table[idx], p1, p2, p3, p4);
+   if (id >= 0) { return id; }
+
+   // not found - use an unused item or create a new one
+   int new_id;
+   if (unused.Size())
+   {
+      new_id = unused.Last();
+      unused.DeleteLast();
+   }
+   else
+   {
+      new_id = Base::Append();
+   }
+   T& item = Base::At(new_id);
+   item.p1 = p1;
+   item.p2 = p2;
+   item.p3 = p3;
+   item.p4 = p4;
+
+   // insert into hashtable
+   Insert(idx, new_id, item);
+   CheckRehash();
+
+   return new_id;
+}
+
+
+template<typename T>
 inline T* HashTable<T>::Find(int p1, int p2)
 {
    int id = FindId(p1, p2);
@@ -752,6 +833,13 @@ template<typename T>
 inline T* HashTable<T>::Find(int p1, int p2, int p3, int p4)
 {
    int id = FindId(p1, p2, p3, p4);
+   return (id >= 0) ? &(Base::At(id)) : NULL;
+}
+
+template<typename T>
+inline T* HashTable<T>::Find(int p1, int p2, int p3, int p4, int p5)
+{
+   int id = FindId(p1, p2, p3, p4, p5);
    return (id >= 0) ? &(Base::At(id)) : NULL;
 }
 
@@ -770,6 +858,13 @@ inline const T* HashTable<T>::Find(int p1, int p2, int p3, int p4) const
 }
 
 template<typename T>
+inline const T* HashTable<T>::Find(int p1, int p2, int p3, int p4, int p5) const
+{
+   int id = FindId(p1, p2, p3, p4, p5);
+   return (id >= 0) ? &(Base::At(id)) : NULL;
+}
+
+template<typename T>
 int HashTable<T>::FindId(int p1, int p2) const
 {
    if (p1 > p2) { std::swap(p1, p2); }
@@ -781,6 +876,13 @@ int HashTable<T>::FindId(int p1, int p2, int p3, int p4) const
 {
    internal::sort4_ext(p1, p2, p3, p4);
    return SearchList(table[Hash(p1, p2, p3)], p1, p2, p3);
+}
+
+template<typename T>
+int HashTable<T>::FindId(int p1, int p2, int p3, int p4, int p5) const
+{
+   internal::sort5(p1, p2, p3, p4, p5);
+   return SearchList(table[Hash(p1, p2, p3, p4)], p1, p2, p3, p4);
 }
 
 template<typename T>
@@ -802,6 +904,18 @@ int HashTable<T>::SearchList(int id, int p1, int p2, int p3) const
    {
       const T& item = Base::At(id);
       if (item.p1 == p1 && item.p2 == p2 && item.p3 == p3) { return id; }
+      id = item.next;
+   }
+   return -1;
+}
+
+template<typename T>
+int HashTable<T>::SearchList(int id, int p1, int p2, int p3, int p4) const
+{
+   while (id >= 0)
+   {
+      const T& item = Base::At(id);
+      if (item.p1 == p1 && item.p2 == p2 && item.p3 == p3 && item.p4 == p4) { return id; }
       id = item.next;
    }
    return -1;
@@ -945,6 +1059,24 @@ void HashTable<T>::Reparent(int id,
 
    // reinsert under new parent IDs
    int new_idx = Hash(new_p1, new_p2, new_p3);
+   Insert(new_idx, id, item);
+}
+
+template<typename T>
+void HashTable<T>::Reparent(int id,
+                            int new_p1, int new_p2, int new_p3, int new_p4, int new_p5)
+{
+   T& item = Base::At(id);
+   Unlink(Hash(item), id);
+
+   internal::sort5(new_p1, new_p2, new_p3, new_p4, new_p5);
+   item.p1 = new_p1;
+   item.p2 = new_p2;
+   item.p3 = new_p3;
+   item.p4 = new_p4;
+
+   // reinsert under new parent IDs
+   int new_idx = Hash(new_p1, new_p2, new_p3, new_p4);
    Insert(new_idx, id, item);
 }
 
