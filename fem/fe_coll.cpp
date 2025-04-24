@@ -110,7 +110,6 @@ int FiniteElementCollection::HasFaceDofs(Geometry::Type geom, int p) const
          return max(GetNumDof(Geometry::TRIANGLE, p),
                     GetNumDof(Geometry::SQUARE, p));
       case Geometry::PENTATOPE:   return DofForGeometry (Geometry::TETRAHEDRON);
-      case Geometry::TESSERACT:   return DofForGeometry (Geometry::CUBE);
       default:
          MFEM_ABORT("unknown geometry type");
    }
@@ -122,7 +121,6 @@ int FiniteElementCollection::HasPlanarDofs(Geometry::Type GeomType) const
    switch (GeomType)
    {
       case Geometry::PENTATOPE:   return DofForGeometry (Geometry::TRIANGLE);
-      case Geometry::TESSERACT:   return DofForGeometry (Geometry::SQUARE);
       default:
          mfem_error ("FiniteElementCollection::HasPlanarDofs:"
                      " unknown geometry type.");
@@ -709,7 +707,6 @@ LinearFECollection::FiniteElementForGeometry(Geometry::Type GeomType) const
       case Geometry::PRISM:       return &WedgeFE;
       case Geometry::PYRAMID:     return &PyramidFE;
       case Geometry::PENTATOPE:   return &PentatopeFE;
-      case Geometry::TESSERACT:   return &TesseractFE;
       default:
          if (error_mode == RETURN_NULL) { return nullptr; }
          mfem_error ("LinearFECollection: unknown geometry type.");
@@ -2035,7 +2032,6 @@ H1_FECollection::H1_FECollection(const int p, const int dim, const int btype,
           if (dim >= 4)
           {
              H1_dof[Geometry::PENTATOPE] = (TriDof*pm3*pm4)/12;
-             H1_dof[Geometry::TESSERACT] = QuadDof*pm1*pm1;
              if (b_type == BasisType::Positive)
              {
                 mfem_error("H1_FECollection: BasisType::Positive not implemented");
@@ -2439,17 +2435,14 @@ L2_FECollection::L2_FECollection(const int p, const int dim, const int btype,
          {
             L2_Elements[Geometry::PENTATOPE] =
                new L2_PentatopeElement(p, btype);
-            L2_Elements[Geometry::TESSERACT] = new L2_HexahedronElement(p, btype);
          }
          L2_Elements[Geometry::PENTATOPE]->SetMapType(map_type);
-         L2_Elements[Geometry::TESSERACT]->SetMapType(map_type);
          // All trace element use the default Gauss-Legendre nodal points
          Tr_Elements[Geometry::TETRAHEDRON] = new L2_TetrahedronElement(p);
-         Tr_Elements[Geometry::CUBE] = new L2_HexahedronElement(p);
 
          const int PentDof = L2_Elements[Geometry::PENTATOPE]->GetDof();
-         const int TessDof = L2_Elements[Geometry::TESSERACT]->GetDof();
-         const int MaxDof = std::max(PentDof, TessDof);
+         //const int MaxDof = std::max(PentDof, TessDof);
+         const int MaxDof = PentDof;
          OtherDofOrd = new int[MaxDof];
          for (int j = 0; j < MaxDof; j++)
          {
@@ -2741,56 +2734,80 @@ void RT_FECollection::InitFaces(const int p, const int dim_,
          {
             for (int i=0; i+j+k<=p; i++)
             {
-               int o = TetDof + TriDof2 - ((pp3-k)*(pp2-k)*(pp1-k))/6 - (pp2-j)*
-                       (pp1-j)/2 - k*j + i;
-               int l = p-k-j-i;
-               TetDofOrd[0][o] = o;
-               TetDofOrd[1][o] =  -1 - (TetDof + TriDof2 - ((pp3-k)*(pp2-k)*(pp1-k))/6 -
-                                        (pp2-j)*(pp1-j)/2 - k*j + l);
-               TetDofOrd[2][o] =        TetDof + TriDof2 - ((pp3-k)*(pp2-k)*(pp1-k))/6 -
-                                        (pp2-i)*(pp1-i)/2 - k*i + l;
-               TetDofOrd[3][o] =  -1 - (TetDof + TriDof2 - ((pp3-k)*(pp2-k)*(pp1-k))/6 -
-                                        (pp2-l)*(pp1-l)/2 - k*l + i);
-               TetDofOrd[4][o] =        TetDof + TriDof2 - ((pp3-k)*(pp2-k)*(pp1-k))/6 -
-                                        (pp2-l)*(pp1-l)/2 - k*l + j;
-               TetDofOrd[5][o] =  -1 - (TetDof + TriDof2 - ((pp3-k)*(pp2-k)*(pp1-k))/6 -
-                                        (pp2-i)*(pp1-i)/2 - k*i + j);
-               TetDofOrd[6][o] =        TetDof + TriDof2 - ((pp3-j)*(pp2-j)*(pp1-j))/6 -
-                                        (pp2-i)*(pp1-i)/2 - j*i + k;
-               TetDofOrd[7][o] =  -1 - (TetDof + TriDof2 - ((pp3-j)*(pp2-j)*(pp1-j))/6 -
-                                        (pp2-l)*(pp1-l)/2 - j*l + k);
-               TetDofOrd[8][o] =        TetDof + TriDof2 - ((pp3-i)*(pp2-i)*(pp1-i))/6 -
-                                        (pp2-l)*(pp1-l)/2 - i*l + k;
-               TetDofOrd[9][o] =  -1 - (TetDof + TriDof2 - ((pp3-l)*(pp2-l)*(pp1-l))/6 -
-                                        (pp2-i)*(pp1-i)/2 - l*i + k);
-               TetDofOrd[10][o] =       TetDof + TriDof2 - ((pp3-l)*(pp2-l)*(pp1-l))/6 -
-                                        (pp2-j)*(pp1-j)/2 - l*j + k;
-               TetDofOrd[11][o] = -1 - (TetDof + TriDof2 - ((pp3-i)*(pp2-i)*(pp1-i))/6 -
-                                        (pp2-j)*(pp1-j)/2 - i*j + k);
-               TetDofOrd[12][o] =       TetDof + TriDof2 - ((pp3-i)*(pp2-i)*(pp1-i))/6 -
-                                        (pp2-k)*(pp1-k)/2 - i*k + j;
-               TetDofOrd[13][o] = -1 - (TetDof + TriDof2 - ((pp3-l)*(pp2-l)*(pp1-l))/6 -
-                                        (pp2-k)*(pp1-k)/2 - l*k + j);
-               TetDofOrd[14][o] =       TetDof + TriDof2 - ((pp3-l)*(pp2-l)*(pp1-l))/6 -
-                                        (pp2-k)*(pp1-k)/2 - l*k + i;
-               TetDofOrd[15][o] = -1 - (TetDof + TriDof2 - ((pp3-i)*(pp2-i)*(pp1-i))/6 -
-                                        (pp2-k)*(pp1-k)/2 - i*k + l);
-               TetDofOrd[16][o] =       TetDof + TriDof2 - ((pp3-j)*(pp2-j)*(pp1-j))/6 -
-                                        (pp2-k)*(pp1-k)/2 - j*k + l;
-               TetDofOrd[17][o] = -1 - (TetDof + TriDof2 - ((pp3-j)*(pp2-j)*(pp1-j))/6 -
-                                        (pp2-k)*(pp1-k)/2 - j*k + i);
-               TetDofOrd[18][o] =       TetDof + TriDof2 - ((pp3-j)*(pp2-j)*(pp1-j))/6 -
-                                        (pp2-l)*(pp1-l)/2 - j*l + i;
-               TetDofOrd[19][o] = -1 - (TetDof + TriDof2 - ((pp3-j)*(pp2-j)*(pp1-j))/6 -
-                                        (pp2-i)*(pp1-i)/2 - j*i + l);
-               TetDofOrd[20][o] =       TetDof + TriDof2 - ((pp3-i)*(pp2-i)*(pp1-i))/6 -
-                                        (pp2-j)*(pp1-j)/2 - i*j + l;
-               TetDofOrd[21][o] = -1 - (TetDof + TriDof2 - ((pp3-l)*(pp2-l)*(pp1-l))/6 -
-                                        (pp2-j)*(pp1-j)/2 - l*j + i);
-               TetDofOrd[22][o] =       TetDof + TriDof2 - ((pp3-l)*(pp2-l)*(pp1-l))/6 -
-                                        (pp2-i)*(pp1-i)/2 - l*i + j;
-               TetDofOrd[23][o] = -1 - (TetDof + TriDof2 - ((pp3-i)*(pp2-i)*(pp1-i))/6 -
-                                        (pp2-l)*(pp1-l)/2 - i*l + j);
+                int o = TetDof + TriDof2 - ((pp3-k)*(pp2-k)*(pp1-k))/6 - (pp2-j)*
+                        (pp1-j)/2 - k*j + i;
+                int l = p-k-j-i;
+                TetDofOrd[0][o] = o;
+                 
+                TetDofOrd[1][o] = -1 - (TetDof + TriDof2 - ((pp3-j)*(pp2-j)*(pp1-j))/6 -
+                                          (pp2-k)*(pp1-k)/2 - j*k + i);
+                 
+                TetDofOrd[2][o] =       TetDof + TriDof2 - ((pp3-i)*(pp2-i)*(pp1-i))/6 -
+                                          (pp2-k)*(pp1-k)/2 - i*k + j;
+                 
+                TetDofOrd[3][o] =  -1 - (TetDof + TriDof2 - ((pp3-k)*(pp2-k)*(pp1-k))/6 -
+                                          (pp2-i)*(pp1-i)/2 - k*i + j);
+                 
+                TetDofOrd[4][o] =        TetDof + TriDof2 - ((pp3-j)*(pp2-j)*(pp1-j))/6 -
+                                          (pp2-i)*(pp1-i)/2 - j*i + k;
+                 
+                TetDofOrd[5][o] = -1 - (TetDof + TriDof2 - ((pp3-i)*(pp2-i)*(pp1-i))/6 -
+                                          (pp2-j)*(pp1-j)/2 - i*j + k);
+                 
+                TetDofOrd[6][o] =        TetDof + TriDof2 - ((pp3-k)*(pp2-k)*(pp1-k))/6 -
+                                          (pp2-l)*(pp1-l)/2 - k*l + j;
+                 
+                TetDofOrd[7][o] = -1 - (TetDof + TriDof2 - ((pp3-l)*(pp2-l)*(pp1-l))/6 -
+                                          (pp2-k)*(pp1-k)/2 - l*k + j);
+                 
+                TetDofOrd[8][o] =       TetDof + TriDof2 - ((pp3-l)*(pp2-l)*(pp1-l))/6 -
+                                          (pp2-j)*(pp1-j)/2 - l*j + k;
+                 
+                TetDofOrd[9][o] =  -1 - (TetDof + TriDof2 - ((pp3-j)*(pp2-j)*(pp1-j))/6 -
+                                          (pp2-l)*(pp1-l)/2 - j*l + k);
+                 
+                TetDofOrd[10][o] =       TetDof + TriDof2 - ((pp3-j)*(pp2-j)*(pp1-j))/6 -
+                                          (pp2-k)*(pp1-k)/2 - j*k + l;
+             
+                TetDofOrd[11][o] =  -1 - (TetDof + TriDof2 - ((pp3-k)*(pp2-k)*(pp1-k))/6 -
+                                         (pp2-j)*(pp1-j)/2 - k*j + l);
+                 
+                TetDofOrd[12][o] =        TetDof + TriDof2 - ((pp3-i)*(pp2-i)*(pp1-i))/6 -
+                                          (pp2-l)*(pp1-l)/2 - i*l + k;
+                 
+                TetDofOrd[13][o] =  -1 - (TetDof + TriDof2 - ((pp3-l)*(pp2-l)*(pp1-l))/6 -
+                                          (pp2-i)*(pp1-i)/2 - l*i + k);
+                 
+                TetDofOrd[14][o] =        TetDof + TriDof2 - ((pp3-k)*(pp2-k)*(pp1-k))/6 -
+                                         (pp2-i)*(pp1-i)/2 - k*i + l;
+                 
+                TetDofOrd[15][o] = -1 - (TetDof + TriDof2 - ((pp3-i)*(pp2-i)*(pp1-i))/6 -
+                                          (pp2-k)*(pp1-k)/2 - i*k + l);
+                 
+                TetDofOrd[16][o] =       TetDof + TriDof2 - ((pp3-l)*(pp2-l)*(pp1-l))/6 -
+                                          (pp2-k)*(pp1-k)/2 - l*k + i;
+                 
+                TetDofOrd[17][o] =  -1 - (TetDof + TriDof2 - ((pp3-k)*(pp2-k)*(pp1-k))/6 -
+                                         (pp2-l)*(pp1-l)/2 - k*l + i);
+                 
+                TetDofOrd[18][o] =       TetDof + TriDof2 - ((pp3-i)*(pp2-i)*(pp1-i))/6 -
+                                          (pp2-j)*(pp1-j)/2 - i*j + l;
+                 
+                TetDofOrd[19][o] = -1 - (TetDof + TriDof2 - ((pp3-j)*(pp2-j)*(pp1-j))/6 -
+                                          (pp2-i)*(pp1-i)/2 - j*i + l);
+                 
+                TetDofOrd[20][o] =       TetDof + TriDof2 - ((pp3-j)*(pp2-j)*(pp1-j))/6 -
+                                          (pp2-l)*(pp1-l)/2 - j*l + i;
+                 
+                TetDofOrd[21][o] = -1 - (TetDof + TriDof2 - ((pp3-l)*(pp2-l)*(pp1-l))/6 -
+                                          (pp2-j)*(pp1-j)/2 - l*j + i);
+                 
+                TetDofOrd[22][o] =       TetDof + TriDof2 - ((pp3-l)*(pp2-l)*(pp1-l))/6 -
+                                          (pp2-i)*(pp1-i)/2 - l*i + j;
+                 
+                TetDofOrd[23][o] = -1 - (TetDof + TriDof2 - ((pp3-i)*(pp2-i)*(pp1-i))/6 -
+                                          (pp2-l)*(pp1-l)/2 - i*l + j);
+
                if (!signs)
                {
                   for (int m = 0; m < 24; m+=2)

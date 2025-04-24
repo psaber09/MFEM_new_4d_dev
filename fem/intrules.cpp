@@ -997,8 +997,6 @@ IntegrationRules::IntegrationRules(int ref, int type)
    PentatopeIntRules.SetSize(32);
    PentatopeIntRules = NULL;
 
-   TesseractIntRules.SetSize(32);
-   TesseractIntRules = NULL;
 
 #if defined(MFEM_THREAD_SAFE) && defined(MFEM_USE_OPENMP)
    IntRuleLocks.SetSize(Geometry::NUM_GEOMETRIES, h_mt);
@@ -1024,7 +1022,6 @@ const IntegrationRule &IntegrationRules::Get(int GeomType, int Order)
       case Geometry::PRISM:       ir_array = &PrismIntRules; break;
       case Geometry::PYRAMID:     ir_array = &PyramidIntRules; break;
       case Geometry::PENTATOPE:   ir_array = &PentatopeIntRules; break;
-      case Geometry::TESSERACT:   ir_array = &TesseractIntRules; break;
       case Geometry::INVALID:
       case Geometry::NUM_GEOMETRIES:
          MFEM_ABORT("Unknown type of reference element!");
@@ -1076,7 +1073,6 @@ void IntegrationRules::Set(int GeomType, int Order, IntegrationRule &IntRule)
       case Geometry::PRISM:       ir_array = &PrismIntRules; break;
       case Geometry::PYRAMID:     ir_array = &PyramidIntRules; break;
       case Geometry::PENTATOPE:   ir_array = &PentatopeIntRules; break;
-      case Geometry::TESSERACT:   ir_array = &TesseractIntRules; break;
       case Geometry::INVALID:
       case Geometry::NUM_GEOMETRIES:
          MFEM_ABORT("Unknown type of reference element!");
@@ -1136,7 +1132,6 @@ IntegrationRules::~IntegrationRules()
    DeleteIntRuleArray(PrismIntRules);
    DeleteIntRuleArray(PyramidIntRules);
    DeleteIntRuleArray(PentatopeIntRules);
-   DeleteIntRuleArray(TesseractIntRules);
 }
 
 
@@ -1163,8 +1158,6 @@ IntegrationRule *IntegrationRules::GenerateIntegrationRule(int GeomType,
          return PyramidIntegrationRule(Order);
       case Geometry::PENTATOPE:
          return PentatopeIntegrationRule(Order);
-      case Geometry::TESSERACT:
-         return TesseractIntegrationRule(Order);
       case Geometry::INVALID:
       case Geometry::NUM_GEOMETRIES:
          MFEM_ABORT("Unknown type of reference element!");
@@ -4986,49 +4979,7 @@ IntegrationRule *IntegrationRules::PentatopeIntegrationRule(int Order)
     
     return PentatopeIntRules[Order];
 }
-IntegrationRule *IntegrationRules::TesseractIntegrationRule(int Order)
-{
-   int k, l, m, n, np, index;
-   int i = (Order / 2) * 2 + 1;   // Get closest odd # >= Order
 
-   if (!HaveIntRule(SegmentIntRules, i))
-   {
-      SegmentIntegrationRule(i);
-   }
-   AllocIntRule(TesseractIntRules, i);
-   np = SegmentIntRules[i] -> GetNPoints();
-   TesseractIntRules[i-1] = TesseractIntRules[i] = new IntegrationRule(
-      np*np*np*np);
-   index = 0;
-   for (k = 0; k < np; k++)
-      for (l = 0; l < np; l++)
-         for (m = 0; m < np; m++)
-            for (n = 0; n < np; n++)
-            {
-               //           index = ((k*np+l)*np+m)*np + n;
-
-               TesseractIntRules[i] -> IntPoint(index).x =
-                  SegmentIntRules[i] -> IntPoint(n).x;
-
-               TesseractIntRules[i] -> IntPoint(index).y =
-                  SegmentIntRules[i] -> IntPoint(m).x;
-
-               TesseractIntRules[i] -> IntPoint(index).z =
-                  SegmentIntRules[i] -> IntPoint(l).x;
-
-               TesseractIntRules[i] -> IntPoint(index).t =
-                  SegmentIntRules[i] -> IntPoint(k).x;
-
-               TesseractIntRules[i] -> IntPoint(index).weight =
-                  SegmentIntRules[i] -> IntPoint(k).weight *
-                  SegmentIntRules[i] -> IntPoint(l).weight *
-                  SegmentIntRules[i] -> IntPoint(m).weight *
-                  SegmentIntRules[i] -> IntPoint(n).weight;
-
-               index++;
-            }
-   return TesseractIntRules[i];
-}
 
 IntegrationRule& NURBSMeshRules::GetElementRule(const int elem,
                                                 const int patch, const int *ijk,

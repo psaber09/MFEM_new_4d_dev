@@ -1199,6 +1199,1392 @@ void H1_PentatopeElement::CalcHessian(const IntegrationPoint &ip,
    Ti.Mult(ddu, ddshape);
 }
 
+H1_PentatopeElement_Barycentric::H1_PentatopeElement_Barycentric(const int p, const int type)
+   : NodalFiniteElement(4, Geometry::PENTATOPE,
+                        ((p + 1)*(p + 2)*(p + 3)*(p + 4))/24,
+                        p, FunctionSpace::Pk)
+{
+   const double *cp = poly1d.ClosedPoints(p, VerifyClosed(type));
+
+#ifndef MFEM_THREAD_SAFE
+   shape_x.SetSize(p + 1);
+   shape_y.SetSize(p + 1);
+   shape_z.SetSize(p + 1);
+   shape_t.SetSize(p + 1);
+   shape_l.SetSize(p + 1);
+   dshape_x.SetSize(p + 1);
+   dshape_y.SetSize(p + 1);
+   dshape_z.SetSize(p + 1);
+   dshape_t.SetSize(p + 1);
+   dshape_l.SetSize(p + 1);
+   ddshape_x.SetSize(p + 1);
+   ddshape_y.SetSize(p + 1);
+   ddshape_z.SetSize(p + 1);
+   ddshape_t.SetSize(p + 1);
+   ddshape_l.SetSize(p + 1);
+   u.SetSize(dof);
+   du.SetSize(dof, dim);
+   ddu.SetSize(dof,dim*(dim+1)/2 );
+#else
+   Vector shape_x(p + 1), shape_y(p + 1), shape_z(p + 1), shape_t(p+1),
+          shape_l(p + 1);
+#endif
+
+   // vertices
+   Nodes.IntPoint(0).Set4(cp[0], cp[0], cp[0], cp[0]);
+   Nodes.IntPoint(1).Set4(cp[p], cp[0], cp[0], cp[0]);
+   Nodes.IntPoint(2).Set4(cp[0], cp[p], cp[0], cp[0]);
+   Nodes.IntPoint(3).Set4(cp[0], cp[0], cp[p], cp[0]);
+   Nodes.IntPoint(4).Set4(cp[0], cp[0], cp[0], cp[p]);
+
+   // edges (see Tetrahedron::edges in mesh/tetrahedron.cpp)
+   int o = 5;
+   for (int i = 1; i < p; i++)  // (0,1)
+   {
+      Nodes.IntPoint(o++).Set4(cp[i], cp[0], cp[0], cp[0]);
+   }
+   for (int i = 1; i < p; i++)  // (0,2)
+   {
+      Nodes.IntPoint(o++).Set4(cp[0], cp[i], cp[0], cp[0]);
+   }
+   for (int i = 1; i < p; i++)  // (0,3)
+   {
+      Nodes.IntPoint(o++).Set4(cp[0], cp[0], cp[i], cp[0]);
+   }
+   for (int i = 1; i < p; i++)  // (0,4)
+   {
+      Nodes.IntPoint(o++).Set4(cp[0], cp[0], cp[0], cp[i]);
+   }
+   for (int i = 1; i < p; i++)  // (1,2)
+   {
+      Nodes.IntPoint(o++).Set4(cp[p-i], cp[i], cp[0], cp[0]);
+   }
+   for (int i = 1; i < p; i++)  // (1,3)
+   {
+      Nodes.IntPoint(o++).Set4(cp[p-i], cp[0], cp[i], cp[0]);
+   }
+   for (int i = 1; i < p; i++)  // (1,4)
+   {
+      Nodes.IntPoint(o++).Set4(cp[p-i], cp[0], cp[0], cp[i]);
+   }
+   for (int i = 1; i < p; i++)  // (2,3)
+   {
+      Nodes.IntPoint(o++).Set4(cp[0], cp[p-i], cp[i], cp[0]);
+   }
+   for (int i = 1; i < p; i++)  // (2,4)
+   {
+      Nodes.IntPoint(o++).Set4(cp[0], cp[p-i], cp[0], cp[i]);
+   }
+   for (int i = 1; i < p; i++)  // (3,4)
+   {
+      Nodes.IntPoint(o++).Set4(cp[0], cp[0], cp[p-i], cp[i]);
+   }
+
+   // faces (see Mesh::GeneratePlanars in mesh/mesh.cpp)
+   for (int j = 1; j < p; j++)
+      for (int i=1; i + j < p; i++) // (0,1,2)
+      {
+         double w = cp[i] + cp[j] + cp[p-i-j];
+         Nodes.IntPoint(o++).Set4(cp[i]/w, cp[j]/w, cp[0], cp[0]);
+      }
+   for (int j = 1; j < p; j++)
+      for (int i=1; i + j < p; i++) // (0,1,3)
+      {
+         double w = cp[i] + cp[j] + cp[p-i-j];
+         Nodes.IntPoint(o++).Set4(cp[i]/w, cp[0], cp[j]/w, cp[0]);
+      }
+   for (int j = 1; j < p; j++)
+      for (int i=1; i + j < p; i++) // (0,1,4)
+      {
+         double w = cp[i] + cp[j] + cp[p-i-j];
+         Nodes.IntPoint(o++).Set4(cp[i]/w, cp[0], cp[0], cp[j]/w);
+      }
+   for (int j = 1; j < p; j++)
+      for (int i=1; i + j < p; i++) // (0,2,3)
+      {
+         double w = cp[i] + cp[j] + cp[p-i-j];
+         Nodes.IntPoint(o++).Set4(cp[0], cp[i]/w, cp[j]/w, cp[0]);
+      }
+   for (int j = 1; j < p; j++)
+      for (int i=1; i + j < p; i++) // (0,2,4)
+      {
+         double w = cp[i] + cp[j] + cp[p-i-j];
+         Nodes.IntPoint(o++).Set4(cp[0], cp[i]/w, cp[0], cp[j]/w);
+      }
+   for (int j = 1; j < p; j++)
+      for (int i=1; i + j < p; i++) // (0,3,4)
+      {
+         double w = cp[i] + cp[j] + cp[p-i-j];
+         Nodes.IntPoint(o++).Set4(cp[0], cp[0], cp[i]/w, cp[j]/w);
+      }
+   for (int j = 1; j < p; j++)
+      for (int i=1; i + j < p; i++) // (1,2,3)
+      {
+         double w = cp[i] + cp[j] + cp[p-i-j];
+         Nodes.IntPoint(o++).Set4(cp[p-i-j]/w, cp[i]/w, cp[j]/w, cp[0]);
+      }
+   for (int j = 1; j < p; j++)
+      for (int i=1; i + j < p; i++) // (1,2,4)
+      {
+         double w = cp[i] + cp[j] + cp[p-i-j];
+         Nodes.IntPoint(o++).Set4(cp[p-i-j]/w, cp[i]/w, cp[0], cp[j]/w);
+      }
+   for (int j = 1; j < p; j++)
+      for (int i=1; i + j < p; i++) // (1,3,4)
+      {
+         double w = cp[i] + cp[j] + cp[p-i-j];
+         Nodes.IntPoint(o++).Set4(cp[p-i-j]/w, cp[0], cp[i]/w, cp[j]/w);
+      }
+   for (int j = 1; j < p; j++)
+      for (int i=1; i + j < p; i++) // (2,3,4)
+      {
+         double w = cp[i] + cp[j] + cp[p-i-j];
+         Nodes.IntPoint(o++).Set4(cp[0], cp[p-i-j]/w, cp[i]/w, cp[j]/w);
+      }
+
+   // facets (see Mesh::GenerateFaces in mesh/mesh.cpp)
+   for (int k = 1; k < p; k++)
+      for (int j = 1; j + k < p; j++)
+         for (int i = 1; i + j + k < p; i++)  // (0,1,2,3)
+         {
+            double w = cp[i] + cp[j] + cp[k] + cp[p-i-j-k];
+            Nodes.IntPoint(o++).Set4(cp[i]/w, cp[j]/w, cp[k]/w, cp[0]);
+         }
+   for (int k = 1; k < p; k++)
+      for (int j = 1; j + k < p; j++)
+         for (int i = 1; i + j + k < p; i++)  // (0,2,1,4)
+         {
+            double w = cp[i] + cp[j] + cp[k] + cp[p-i-j-k];
+            Nodes.IntPoint(o++).Set4(cp[j]/w, cp[i]/w, cp[0], cp[k]/w);
+         }
+   for (int k = 1; k < p; k++)
+      for (int j = 1; j + k < p; j++)
+         for (int i = 1; i + j + k < p; i++)  // (0,1,3,4)
+         {
+            double w = cp[i] + cp[j] + cp[k] + cp[p-i-j-k];
+            Nodes.IntPoint(o++).Set4(cp[i]/w, cp[0], cp[j]/w, cp[k]/w);
+         }
+   for (int k = 1; k < p; k++)
+      for (int j = 1; j + k < p; j++)
+         for (int i = 1; i + j + k < p; i++)  // (0,3,2,4)
+         {
+            double w = cp[i] + cp[j] + cp[k] + cp[p-i-j-k];
+            Nodes.IntPoint(o++).Set4(cp[0], cp[j]/w, cp[i]/w, cp[k]/w);
+         }
+   for (int k = 1; k < p; k++)
+      for (int j = 1; j + k < p; j++)
+         for (int i = 1; i + j + k < p; i++)  // (1,2,3,4)
+         {
+            double w = cp[i] + cp[j] + cp[k] + cp[p-i-j-k];
+            Nodes.IntPoint(o++).Set4(cp[p-i-j-k]/w, cp[i]/w, cp[j]/w, cp[k]/w);
+         }
+
+   // interior bubbles
+   for (int l = 1; l < p; l++)
+      for (int k = 1; k + l < p; k++)
+         for (int j = 1; j + k + l < p; j++)
+            for (int i = 1; i + j + k + l < p; i++)
+            {
+               double w = cp[i] + cp[j] + cp[k] + cp[l] + cp[p-i-j-k-l];
+               Nodes.IntPoint(o++).Set4(cp[i]/w, cp[j]/w, cp[k]/w, cp[l]/w);
+            }
+
+   DenseMatrix T(dof);
+   for (int m = 0; m < dof; m++)
+   {
+       IntegrationPoint &ip = Nodes.IntPoint(m);
+       
+       //std::cout << "Dof = " << m << " " << ip.x << "," << ip.y << "," << ip.z << "," << ip.t << std::endl;
+       
+       std::vector<double> bary_vector{(1.0 - ip.x - ip.y - ip.z - ip.t), ip.x, ip.y, ip.z, ip.t};
+       
+       int o = 0;
+       
+       double La, Lb, Lc, Ld, Le;
+       
+       //Vertices
+       for (int a=0; a<5; a++)
+       {
+           //compute barycentric function
+           T(o++,m) = bary_vector[a];
+       }
+       
+       //Edges
+       for(int i=2; i<=p; i++)
+       {
+           for(int a=0; a<5; a++)
+           {
+               for(int b=0; b<5; b++)
+               {
+                   if(a<b)
+                   {
+                       La = bary_vector[a];
+                       Lb = bary_vector[b];
+                       
+                       // compute polynomials
+                       std::vector<double> int_Legendre_i;
+                       double x = Lb;
+                       double y = La + Lb;
+                       poly1d.CalcIntLegendre(i, x, y, int_Legendre_i);
+                       // Add Basis Funcitons
+                       T(o++, m) = int_Legendre_i[int_Legendre_i.size()-1];
+                       
+                   }
+               }
+           }
+       }// end of edges
+       
+       //Faces
+       for(int i=2; i<=p;i++)
+       {
+           for(int j=1; j<=p;j++)
+           {
+               for(int a=0; a<5;a++)
+               {
+                   for(int b=0; b<5;b++)
+                   {
+                       for(int c=0; c<5;c++)
+                       {
+                           if((a<b)&&(b<c)&&((i+j)<=p))
+                           {
+                               La = bary_vector[a];
+                               Lb = bary_vector[b];
+                               Lc = bary_vector[c];
+                               
+                               // compute polynomials
+                               double x = Lb;
+                               double y = La + Lb;
+                               std::vector<double> int_Legendre_i;
+                               poly1d.CalcIntLegendre(i, x, y, int_Legendre_i);
+                               
+                               double alpha = 2.0*i;
+                               x = Lc;
+                               y = La + Lb + Lc;
+                               std::vector<double> int_Jacobi_j;
+                               poly1d.CalcIntJacobi(j, x, y, alpha, int_Jacobi_j);
+                               
+                               // Add Basis functions
+                               T(o++, m) = int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1];
+                           }
+                       }
+                   }
+               }
+           }
+       }
+       // end of faces
+       
+      //Facets
+      int a;
+      int b;
+      int c;
+      int d;
+
+      for (int f=0; f<5; f++)
+      {
+          /*
+          // Define each facet
+          if (f==0)
+          {
+              a = 0;
+              b = 1;
+              c = 2;
+              d = 3;
+          }
+          else if(f==1)
+          {
+              // Define Facet
+              a = 0;
+              b = 2;
+              c = 1;
+              d = 4;
+          }
+          // Define each facet
+          else if (f==2)
+          {
+              // Define Facet
+              a = 0;
+              b = 1;
+              c = 3;
+              d = 4;
+          }
+          // Define each facet
+          else if (f==3)
+          {
+              // Define Facet
+              a = 0;
+              b = 3;
+              c = 2;
+              d = 4;
+          }
+          // Define each facet
+          else if (f==4)
+          {
+              // Define Facet
+              a = 1;
+              b = 2;
+              c = 3;
+              d = 4;
+          }
+          else
+          {
+              mfem_error("Invaild facet");
+          }*/
+          
+          // Define each facet
+          if (f==0)
+          {
+              a = 0;
+              b = 1;
+              c = 3;
+              d = 2;
+          }
+          else if(f==1)
+          {
+              // Define Facet
+              a = 0;
+              b = 1;
+              c = 4;
+              d = 2;
+          }
+          // Define each facet
+          else if (f==2)
+          {
+              // Define Facet
+              a = 0;
+              b = 1;
+              c = 3;
+              d = 4;
+          }
+          // Define each facet
+          else if (f==3)
+          {
+              // Define Facet
+              a = 0;
+              b = 2;
+              c = 3;
+              d = 4;
+          }
+          // Define each facet
+          else if (f==4)
+          {
+              // Define Facet
+              a = 1;
+              b = 2;
+              c = 3;
+              d = 4;
+          }
+          else
+          {
+              mfem_error("Invaild facet");
+          }
+
+          // Define Barycentric Coordinates
+          La = bary_vector[a];
+          Lb = bary_vector[b];
+          Lc = bary_vector[c];
+          Ld = bary_vector[d];
+
+          for(int i=2; i<=p;i++)
+          {
+              for(int j=1; j<=p;j++)
+              {
+                  for(int l=1; l<=p;l++)
+                  {
+                      if((i+j+l)<=p)
+                      {
+
+                          // compute polynomials
+                          double x = Lb;
+                          double y = La + Lb;
+                          std::vector<double> int_Legendre_i;
+                          poly1d.CalcIntLegendre(i, x, y, int_Legendre_i);
+
+                          double alpha = 2.0*i;
+                          x = Lc;
+                          y = La + Lb + Lc;
+                          std::vector<double> int_Jacobi_j;
+                          poly1d.CalcIntJacobi(j, x, y, alpha, int_Jacobi_j);
+
+                          alpha = 2.0*(i+j);
+                          x = Ld;
+                          y = La + Lb + Lc + Ld;
+                          std::vector<double> int_Jacobi_l;
+                          poly1d.CalcIntJacobi(l, x, y, alpha, int_Jacobi_l);
+
+                          // Add Basis Functions
+                          T(o++, m) = int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_l.size()-1];
+
+                      }
+                  }
+              }
+          }
+      }// end of Facets
+
+       // define lamda
+       La = bary_vector[0];
+       Lb = bary_vector[1];
+       Lc = bary_vector[2];
+       Ld = bary_vector[3];
+       Le = bary_vector[4];
+       
+      //Interiors
+      for(int i=2; i<=p;i++)
+      {
+          for(int j=1; j<=p;j++)
+          {
+              for(int l=1; l<=p;l++)
+              {
+                  for(int q=1; q<=p;q++)
+                  {
+                      if ((i+j+l+q)<=p)
+                      {
+
+                          // compute polynomials
+                          double x = Lb;
+                          double y = La + Lb;
+                          std::vector<double> int_Legendre_i;
+                          poly1d.CalcIntLegendre(i, x, y, int_Legendre_i);
+                          
+                          double alpha = 2.0*i;
+                          x = Lc;
+                          y = La + Lb + Lc;
+                          std::vector<double> int_Jacobi_j;
+                          poly1d.CalcIntJacobi(j, x, y, alpha, int_Jacobi_j);
+                          
+                          alpha = 2.0*(i+j);
+                          x = Ld;
+                          y = La + Lb + Lc + Ld;
+                          std::vector<double> int_Jacobi_l;
+                          poly1d.CalcIntJacobi(l, x, y, alpha, int_Jacobi_l);
+                          
+                          alpha = 2.0*(i + j + l);
+                          x = Le;
+                          y = 1.0;
+                          std::vector<double> int_Jacobi_q;
+                          poly1d.CalcIntJacobi(q, x, y, alpha, int_Jacobi_q);
+                          
+                          //Add Basis Functions
+                          T(o++, m) = (int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_l.size()-1] * int_Jacobi_q[int_Jacobi_q.size()-1]);
+                          //T(o++, m) = (2.0*La -1.0)*(2.0*Lb -1.0)*(2.0*Lc -1.0)*(2.0*Ld -1.0)*(2.0*Le-1.0);
+                          //T(o++, m) = La*Lb*Lc*Ld*Le;
+
+                      }
+                  }
+              }
+          }
+      } //end of Interiors
+       
+//
+//       ofstream logfile;
+//       logfile.open ("logfile.txt");
+//       for (int i =0; i<T.Size(); i++) {
+//           for (int j = 0; j<T.Size(); j++) {
+//               logfile << "T value @ " << i << "," << j << "= " << T(i,j) << std::endl;
+//           }
+//       }
+//       logfile.close();
+//
+//       std::ofstream A_file("T_matrix.txt");
+//
+//       T.PrintMatlab(A_file);
+
+
+       //mfem_error("Stop for debug");
+
+
+   }
+
+   Ti.Factor(T);
+    
+    //std::ofstream AA_file("Ti_matrix.txt");
+
+    //Ti.PrintMatlab(AA_file);
+   cout << "H1_PentatopeElement(" << p << ") : "; Ti.TestInversion();
+}
+
+
+void H1_PentatopeElement_Barycentric::CalcShape(const IntegrationPoint &ip,
+                                                Vector &shape) const
+{
+   const int p = order;
+
+#ifdef MFEM_THREAD_SAFE
+   Vector shape_x(p + 1), shape_y(p + 1), shape_z(p + 1), shape_t(p+1),
+          shape_l(p + 1);
+   Vector u(Dof);
+#endif
+    
+    double L1, L2, L3, L4, L5;
+    //compute barycentric coordinates as function of ip
+    double L[4];
+    ip.Get(L,4);
+    
+    //ofstream logfile;
+    //logfile.open ("logfile_shape.txt", "a");
+    //ofstream logfile("logfile_shape.txt", std::ios_base::app);
+    //logfile << "pts = " <<  ip.x  << ", " << ip.y  << ", " << ip.z  << ", " << ip.t << std::endl;
+    
+    std::vector<double> bary_vector{(1.0 - L[0]-L[1]-L[2]-L[3]), L[0], L[1], L[2], L[3]};
+    
+    int o = 0;
+    
+    double La, Lb, Lc, Ld, Le;
+    
+    int local_dof = 0;
+    
+   //Vertices
+    for (int a=0; a<5; a++)
+    {
+        //compute barycentric function
+        u(o++) = bary_vector[a];
+    }
+    
+   //Edges
+    for(int i=2; i<=p; i++)
+    {
+        for(int a=0; a<5; a++)
+        {
+            for(int b=0; b<5; b++)
+            {
+                if(a<b)
+                {
+                    La = bary_vector[a];
+                    Lb = bary_vector[b];
+                    
+                    // compute polynomials
+                    std::vector<double> int_Legendre_i;
+                    double x = Lb;
+                    double y = La + Lb;
+                    poly1d.CalcIntLegendre(i, x, y, int_Legendre_i);
+                                        
+                    // Add Basis Funcitons
+                    u(o++) = int_Legendre_i[int_Legendre_i.size()-1];
+                }
+            }
+        }
+    } // end of edges
+
+    
+   //Faces
+   for(int i=2; i<=p;i++)
+   {
+       for(int j=1; j<=p;j++)
+       {
+           for(int a=0; a<5;a++)
+           {
+               for(int b=0; b<5;b++)
+               {
+                   for(int c=0; c<5;c++)
+                   {
+                       if((a<b)&&(b<c)&&((i+j)<=p))
+                       {
+                           La = bary_vector[a];
+                           Lb = bary_vector[b];
+                           Lc = bary_vector[c];
+                           
+                           // compute polynomials
+                           double x = Lb;
+                           double y = La + Lb;
+                           std::vector<double> int_Legendre_i;
+                           poly1d.CalcIntLegendre(i, x, y, int_Legendre_i);
+                           
+                           double alpha = 2.0*i;
+                           x = Lc;
+                           y = La + Lb + Lc;
+                           std::vector<double> int_Jacobi_j;
+                           poly1d.CalcIntJacobi(j, x, y, alpha, int_Jacobi_j);
+                           
+                           // Add Basis functions
+                           u(o++) = int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1];
+                       }
+                   }
+               }
+           }
+       }
+   } // end of faces
+   
+    
+    //Facets
+    int a;
+    int b;
+    int c;
+    int d;
+      
+    for (int f=0; f<5; f++)
+    {
+        /*// Define each facet
+        if (f==0)
+        {
+            a = 0;
+            b = 1;
+            c = 2;
+            d = 3;
+        }
+        else if(f==1)
+        {
+            // Define Facet
+            a = 0;
+            b = 2;
+            c = 1;
+            d = 4;
+        }
+        // Define each facet
+        else if (f==2)
+        {
+            // Define Facet
+            a = 0;
+            b = 1;
+            c = 3;
+            d = 4;
+        }
+        // Define each facet
+        else if (f==3)
+        {
+            // Define Facet
+            a = 0;
+            b = 3;
+            c = 2;
+            d = 4;
+        }
+        // Define each facet
+        else if (f==4)
+        {
+            // Define Facet
+            a = 1;
+            b = 2;
+            c = 3;
+            d = 4;
+        }
+        else
+        {
+            mfem_error("Invaild facet");
+        }*/
+        
+        // Define each facet
+        if (f==0)
+        {
+            a = 0;
+            b = 1;
+            c = 3;
+            d = 2;
+        }
+        else if(f==1)
+        {
+            // Define Facet
+            a = 0;
+            b = 1;
+            c = 4;
+            d = 2;
+        }
+        // Define each facet
+        else if (f==2)
+        {
+            // Define Facet
+            a = 0;
+            b = 1;
+            c = 3;
+            d = 4;
+        }
+        // Define each facet
+        else if (f==3)
+        {
+            // Define Facet
+            a = 0;
+            b = 2;
+            c = 3;
+            d = 4;
+        }
+        // Define each facet
+        else if (f==4)
+        {
+            // Define Facet
+            a = 1;
+            b = 2;
+            c = 3;
+            d = 4;
+        }
+        else
+        {
+            mfem_error("Invaild facet");
+        }
+        
+        // Define Barycentric Coordinates
+        La = bary_vector[a];
+        Lb = bary_vector[b];
+        Lc = bary_vector[c];
+        Ld = bary_vector[d];
+        
+        for(int i=2; i<=p;i++)
+        {
+            for(int j=1; j<=p;j++)
+            {
+                for(int l=1; l<=p;l++)
+                {
+                    if((i+j+l)<=p)
+                    {
+                        
+                        // compute polynomials
+                        double x = Lb;
+                        double y = La + Lb;
+                        std::vector<double> int_Legendre_i;
+                        poly1d.CalcIntLegendre(i, x, y, int_Legendre_i);
+                        
+                        double alpha = 2.0*i;
+                        x = Lc;
+                        y = La + Lb + Lc;
+                        std::vector<double> int_Jacobi_j;
+                        poly1d.CalcIntJacobi(j, x, y, alpha, int_Jacobi_j);
+                        
+                        alpha = 2.0*(i+j);
+                        x = Ld;
+                        y = La + Lb + Lc + Ld;
+                        std::vector<double> int_Jacobi_l;
+                        poly1d.CalcIntJacobi(l, x, y, alpha, int_Jacobi_l);
+                        
+                        // Add Basis Functions
+                        u(o++) = int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_l.size()-1];
+                        local_dof = o;
+
+
+                    }
+                }
+            }
+        }
+    }// end of Facets
+
+    La = bary_vector[0];
+    Lb = bary_vector[1];
+    Lc = bary_vector[2];
+    Ld = bary_vector[3];
+    Le = bary_vector[4];
+           
+    //Interiors
+   for(int i=2; i<=p;i++)
+   {
+       for(int j=1; j<=p;j++)
+       {
+           for(int l=1; l<=p;l++)
+           {
+               for(int q=1; q<=p;q++)
+               {
+                   if ((i+j+l+q)<=p)
+                   {
+                       // define lamda
+                       
+//                       std::cout << "La= " << La << std::endl;
+//                       std::cout << "Lb= " << Lb << std::endl;
+//                       std::cout << "Lc= " << Lc << std::endl;
+//                       std::cout << "Ld= " << Ld << std::endl;
+//                       std::cout << "Le= " << Le << std::endl;
+                       
+                        //compute polynomials
+                       double x = Lb;
+                       double y = La + Lb;
+                       std::vector<double> int_Legendre_i;
+                       poly1d.CalcIntLegendre(i, x, y, int_Legendre_i);
+                       
+                       //std::cout << "o = " << o << std::endl;
+                       //std::cout << "x(x-y) :" << x*(x-y) << std::endl;
+                       
+                       double alpha = 2.0*i;
+                       x = Lc;
+                       y = La + Lb + Lc;
+                       std::vector<double> int_Jacobi_j;
+                       poly1d.CalcIntJacobi(j, x, y, alpha, int_Jacobi_j);
+                       
+                       alpha = 2.0*(i+j);
+                       x = Ld;
+                       y = La + Lb + Lc + Ld;
+                       std::vector<double> int_Jacobi_l;
+                       poly1d.CalcIntJacobi(l, x, y, alpha, int_Jacobi_l);
+                       
+                       alpha = 2.0*(i + j + l);
+                       x = Le;
+                       y = 1.0;
+                       std::vector<double> int_Jacobi_q;
+                       poly1d.CalcIntJacobi(q, x, y, alpha, int_Jacobi_q);
+
+                        //Add Basis Functions
+//
+//                       std::cout << "Bubble Value :" << int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_l.size()-1] * int_Jacobi_q[int_Jacobi_q.size()-1] << std::endl;
+//                       std::cout << "int_legendre :" << int_Legendre_i[int_Legendre_i.size()-1] << std::endl;
+//                       std::cout << "int_Jacobi_j :" << int_Jacobi_j[int_Jacobi_j.size()-1] << std::endl;
+//                       std::cout << "int_Jacobi_l :" << int_Jacobi_l[int_Jacobi_l.size()-1] << std::endl;
+//                       std::cout << "int_Jacobi_q :" << int_Jacobi_q[int_Jacobi_q.size()-1] << std::endl;
+//
+//                       std::cout << "Product Bary :" << La*Lb*Lc*Ld*Le << std::endl;
+                       
+                       u(o++) = (int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_l.size()-1] * int_Jacobi_q[int_Jacobi_q.size()-1]);
+                       //u(o++) = (2.0*La -1.0)*(2.0*Lb -1.0)*(2.0*Lc -1.0)*(2.0*Ld -1.0)*(2.0*Le-1.0);
+                       //u(o++) = La*Lb*Lc*Ld*Le;
+
+                   }
+               }
+           }
+       }
+   } //end of Interiors */
+   //std::cout << "end of interiors" << std::endl;
+    
+
+   Ti.Mult(u, shape);
+    
+//    for (int i = 0; i<local_dof; i++) {
+//        logfile << "shape " << i << "= " << shape(i) << std::endl;
+//    }
+//    logfile.close();
+
+}
+
+void H1_PentatopeElement_Barycentric::CalcDShape(const IntegrationPoint &ip,
+                                     DenseMatrix &dshape) const
+{
+   const int p = order;
+
+#ifdef MFEM_THREAD_SAFE
+   Vector  shape_x(p + 1),  shape_y(p + 1),  shape_z(p + 1),  shape_t(p+1),
+           shape_l(p + 1);
+   Vector dshape_x(p + 1), dshape_y(p + 1), dshape_z(p + 1), dshape_t(p+1),
+          dshape_l(p + 1);
+   DenseMatrix du(Dof, Dim);
+#endif
+    int o = 0;
+
+    double L1, L2, L3, L4, L5;
+    //compute barycentric coordinates as function of ip
+    double L[4];
+    ip.Get(L,4);
+    std::vector<double> bary_vector{(1.0-L[0]-L[1]-L[2]-L[3]), L[0], L[1], L[2], L[3]};
+    double La, Lb, Lc, Ld, Le;
+    
+    // compute grad of barycentric coordinates
+    std::vector<std::vector<double>> grad_bary_vectors{{-1.0,-1.0,-1.0,-1.0},{1.0,0,0,0},{0,1.0,0,0},{0,0,1.0,0},{0,0,0,1.0}};
+    std::vector<double> grad_La, grad_Lb, grad_Lc, grad_Ld, grad_Le;
+    
+   //Vertices
+    for (int a=0; a<5; a++)
+    {
+        //compute vertex
+        du(o,0) = grad_bary_vectors[a][0];
+        du(o,1) = grad_bary_vectors[a][1];
+        du(o,2) = grad_bary_vectors[a][2];
+        du(o,3) = grad_bary_vectors[a][3];
+        o++;
+    }
+    
+   //Edges
+    for(int i=2; i<=p; i++)
+    {
+        for(int a=0; a<5; a++)
+        {
+            for(int b=0; b<5; b++)
+            {
+                if(a<b)
+                {
+                    // Define Barycentric coordinates
+                    La = bary_vector[a];
+                    Lb = bary_vector[b];
+                    
+                    // compute polynomials
+                    std::vector<double> Legendre_i; // Use i-1 polynomial
+                    double x = Lb;
+                    double y = La + Lb;
+                
+                    poly1d.CalcLegendreShifted(i, x, y, Legendre_i);
+                    
+                    std::vector<double> R_i;
+                    x = Lb;
+                    y = La + Lb;
+                    poly1d.CalcRLegendre(i, x, y, R_i);
+                    
+                    
+                    // Add Basis Funcitons
+                    du(o,0) = Legendre_i[Legendre_i.size()-2] * grad_bary_vectors[b][0] + R_i[R_i.size()-2] * (grad_bary_vectors[a][0] + grad_bary_vectors[b][0]);
+                    
+                    du(o,1) = Legendre_i[Legendre_i.size()-2] * grad_bary_vectors[b][1] + R_i[R_i.size()-2] * (grad_bary_vectors[a][1] + grad_bary_vectors[b][1]);
+                    
+                    du(o,2) = Legendre_i[Legendre_i.size()-2] * grad_bary_vectors[b][2] + R_i[R_i.size()-2] * (grad_bary_vectors[a][2] + grad_bary_vectors[b][2]);
+                    
+                    du(o,3) = Legendre_i[Legendre_i.size()-2] * grad_bary_vectors[b][3] + R_i[R_i.size()-2] * (grad_bary_vectors[a][3] + grad_bary_vectors[b][3]);
+                
+                    o++;
+                }
+            }
+        }
+    } // end of edges
+    
+   //Faces
+   for(int i=2; i<=p;i++)
+   {
+       for(int j=1; j<=p;j++)
+       {
+           for(int a=0; a<5;a++)
+           {
+               for(int b=0; b<5;b++)
+               {
+                   for(int c=0; c<5;c++)
+                   {
+                       if((a<b)&&(b<c)&&((i+j)<=p))
+                       {
+                           // Define Barycentric coordinates
+                           La = bary_vector[a];
+                           Lb = bary_vector[b];
+                           Lc = bary_vector[c];
+                           
+                           // compute polynomials
+                           double x = Lb;
+                           double y = La + Lb;
+                           std::vector<double> int_Legendre_i;
+                           poly1d.CalcIntLegendre(i, x, y, int_Legendre_i);
+                           
+                           double alpha = 2.0*i;
+                           x = Lc;
+                           y = La + Lb + Lc;
+                           std::vector<double> int_Jacobi_j;
+                           poly1d.CalcIntJacobi(j, x, y, alpha, int_Jacobi_j);
+                           
+                           // compute polynomials for grad(L_i)
+                           std::vector<double> Legendre_i; // Use i-1 polynomial
+                           x = Lb;
+                           y = La + Lb;
+                           poly1d.CalcLegendreShifted(i, x, y, Legendre_i);
+                           
+                           std::vector<double> R_i; // Use i-1 polynomial
+                           x = Lb;
+                           y = La + Lb;
+                           poly1d.CalcRLegendre(i, x, y, R_i);
+                           
+                           // compute polynimials for grad(L_j^2i)
+                           std::vector<double> Jacobi_j; // Use i-1 polynomial
+                           x = Lc;
+                           y = La + Lb + Lc;
+                           alpha = 2.0*i;
+                           poly1d.CalcJacobi(j, x, y, alpha, Jacobi_j);
+                           
+                           std::vector<double> R_j; // Use i-1 polynomial
+                           x = Lc;
+                           y = La + Lb + Lc;
+                           poly1d.CalcRJacobi(j, x, y, alpha, R_j);
+
+                           // Add Basis Funcitons
+                           du(o,0) = (Legendre_i[Legendre_i.size()-2] * grad_bary_vectors[b][0] +
+                                      R_i[R_i.size()-2] * (grad_bary_vectors[a][0] +grad_bary_vectors[b][0]))
+                                      * int_Jacobi_j[int_Jacobi_j.size()-1]
+                           + int_Legendre_i[int_Legendre_i.size()-1] * (Jacobi_j[Jacobi_j.size()-2] * grad_bary_vectors[c][0] + R_j[R_j.size()-2] * (grad_bary_vectors[a][0] + grad_bary_vectors[b][0] + grad_bary_vectors[c][0]));
+                           
+                           du(o,1) = (Legendre_i[Legendre_i.size()-2] * grad_bary_vectors[b][1] +
+                                      R_i[R_i.size()-2] * (grad_bary_vectors[a][1] +grad_bary_vectors[b][1]))
+                                      * int_Jacobi_j[int_Jacobi_j.size()-1]
+                           + int_Legendre_i[int_Legendre_i.size()-1] * (Jacobi_j[Jacobi_j.size()-2] * grad_bary_vectors[c][1] + R_j[R_j.size()-2] * (grad_bary_vectors[a][1] + grad_bary_vectors[b][1] + grad_bary_vectors[c][1]));
+                           
+                           du(o,2) = (Legendre_i[Legendre_i.size()-2] * grad_bary_vectors[b][2] +
+                                      R_i[R_i.size()-2] * (grad_bary_vectors[a][2] +grad_bary_vectors[b][2]))
+                                      * int_Jacobi_j[int_Jacobi_j.size()-1]
+                           + int_Legendre_i[int_Legendre_i.size()-1] * (Jacobi_j[Jacobi_j.size()-2] * grad_bary_vectors[c][2] + R_j[R_j.size()-2] * (grad_bary_vectors[a][2] + grad_bary_vectors[b][2] + grad_bary_vectors[c][2]));
+                           
+                           du(o,3) = (Legendre_i[Legendre_i.size()-2] * grad_bary_vectors[b][3] +
+                                      R_i[R_i.size()-2] * (grad_bary_vectors[a][3] +grad_bary_vectors[b][3]))
+                                      * int_Jacobi_j[int_Jacobi_j.size()-1]
+                           + int_Legendre_i[int_Legendre_i.size()-1] * (Jacobi_j[Jacobi_j.size()-2] * grad_bary_vectors[c][3] + R_j[R_j.size()-2] * (grad_bary_vectors[a][3] + grad_bary_vectors[b][3] + grad_bary_vectors[c][3]));
+                           
+                           o++;
+                       }
+                   }
+               }
+           }
+       }
+   } // end of faces
+    
+    
+  //Facets
+  int a;
+  int b;
+  int c;
+  int d;
+    
+  for (int f=0; f<5; f++)
+  {
+      /*// Define each facet
+      if (f==0)
+      {
+          a = 0;
+          b = 1;
+          c = 2;
+          d = 3;
+      }
+      else if(f==1)
+      {
+          // Define Facet
+          a = 0;
+          b = 2;
+          c = 1;
+          d = 4;
+      }
+      // Define each facet
+      else if (f==2)
+      {
+          // Define Facet
+          a = 0;
+          b = 1;
+          c = 3;
+          d = 4;
+      }
+      // Define each facet
+      else if (f==3)
+      {
+          // Define Facet
+          a = 0;
+          b = 3;
+          c = 2;
+          d = 4;
+      }
+      // Define each facet
+      else if (f==4)
+      {
+          // Define Facet
+          a = 1;
+          b = 2;
+          c = 3;
+          d = 4;
+      }
+      else
+      {
+          mfem_error("Invaild facet");
+      }*/
+      
+      // Define each facet
+      if (f==0)
+      {
+          a = 0;
+          b = 1;
+          c = 3;
+          d = 2;
+      }
+      else if(f==1)
+      {
+          // Define Facet
+          a = 0;
+          b = 1;
+          c = 4;
+          d = 2;
+      }
+      // Define each facet
+      else if (f==2)
+      {
+          // Define Facet
+          a = 0;
+          b = 1;
+          c = 3;
+          d = 4;
+      }
+      // Define each facet
+      else if (f==3)
+      {
+          // Define Facet
+          a = 0;
+          b = 2;
+          c = 3;
+          d = 4;
+      }
+      // Define each facet
+      else if (f==4)
+      {
+          // Define Facet
+          a = 1;
+          b = 2;
+          c = 3;
+          d = 4;
+      }
+      else
+      {
+          mfem_error("Invaild facet");
+      }
+      
+      // Define Barycentric Coordinates
+      La = bary_vector[a];
+      Lb = bary_vector[b];
+      Lc = bary_vector[c];
+      Ld = bary_vector[d];
+      
+      for(int i=2; i<=p;i++)
+      {
+          for(int j=1; j<=p;j++)
+          {
+              for(int l=1; l<=p;l++)
+              {
+                  if((i+j+l)<=p)
+                  {
+                      
+                      // compute polynomials
+                      double x = Lb;
+                      double y = La + Lb;
+                      std::vector<double> int_Legendre_i;
+                      poly1d.CalcIntLegendre(i, x, y, int_Legendre_i);
+                      
+                      double alpha = 2.0*i;
+                      x = Lc;
+                      y = La + Lb + Lc;
+                      std::vector<double> int_Jacobi_j;
+                      poly1d.CalcIntJacobi(j, x, y, alpha, int_Jacobi_j);
+                      
+                      alpha = 2.0*(i+j);
+                      x = Ld;
+                      y = La + Lb + Lc + Ld;
+                      std::vector<double> int_Jacobi_l;
+                      poly1d.CalcIntJacobi(l, x, y, alpha, int_Jacobi_l);
+                      
+                      // compute polynomials for grad(L_i)
+                      std::vector<double> Legendre_i; // Use i-1 polynomial
+                      x = Lb;
+                      y = La + Lb;
+                      poly1d.CalcLegendreShifted(i, x, y, Legendre_i);
+                      
+                      std::vector<double> R_i; // Use i-1 polynomial
+                      x = Lb;
+                      y = La + Lb;
+                      poly1d.CalcRLegendre(i, x, y, R_i);
+                      
+                      // compute polynimials for grad(L_j^2i)
+                      std::vector<double> Jacobi_j; // Use i-1 polynomial
+                      x = Lc;
+                      y = La + Lb + Lc;
+                      alpha = 2.0*i;
+                      poly1d.CalcJacobi(j, x, y, alpha, Jacobi_j);
+                      
+                      std::vector<double> R_j; // Use i-1 polynomial
+                      x = Lc;
+                      y = La + Lb + Lc;
+                      poly1d.CalcRJacobi(j, x, y, alpha, R_j);
+                      
+                      
+                      // compute polynimials for grad(L_l^2(i+j))
+                      std::vector<double> Jacobi_l; // Use i-1 polynomial
+                      x = Ld;
+                      y = La + Lb + Lc + Ld;
+                      alpha = 2.0*(i+j);
+                      poly1d.CalcJacobi(l, x, y, alpha, Jacobi_l);
+                      
+                      std::vector<double> R_l; // Use i-1 polynomial
+                      x = Ld;
+                      y = La + Lb + Lc + Ld;
+                      poly1d.CalcRJacobi(l, x, y, alpha, R_l);
+                      
+                      // Add Basis Funcitons
+                      du(o,0) = (Legendre_i[Legendre_i.size()-2] * grad_bary_vectors[b][0] +
+                                 R_i[R_i.size()-2] * (grad_bary_vectors[a][0] +grad_bary_vectors[b][0]))
+                                 * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_l.size()-1]
+                      + (int_Legendre_i[int_Legendre_i.size()-1] * (Jacobi_j[Jacobi_j.size()-2] * grad_bary_vectors[c][0] + R_j[R_j.size()-2] * (grad_bary_vectors[a][0] + grad_bary_vectors[b][0] + grad_bary_vectors[c][0])) * int_Jacobi_l[int_Jacobi_l.size()-1])
+                      + (int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2] * grad_bary_vectors[d][0] + R_l[R_l.size()-2] * (grad_bary_vectors[a][0] + grad_bary_vectors[b][0] + grad_bary_vectors[c][0] + grad_bary_vectors[d][0])));
+                      
+                      du(o,1) = (Legendre_i[Legendre_i.size()-2] * grad_bary_vectors[b][1] +
+                                 R_i[R_i.size()-2] * (grad_bary_vectors[a][1] +grad_bary_vectors[b][1]))
+                                 * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_l.size()-1]
+                      + (int_Legendre_i[int_Legendre_i.size()-1] * (Jacobi_j[Jacobi_j.size()-2] * grad_bary_vectors[c][1] + R_j[R_j.size()-2] * (grad_bary_vectors[a][1] + grad_bary_vectors[b][1] + grad_bary_vectors[c][1])) * int_Jacobi_l[int_Jacobi_l.size()-1])
+                      + (int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2] * grad_bary_vectors[d][1] + R_l[R_l.size()-2] * (grad_bary_vectors[a][1] + grad_bary_vectors[b][1] + grad_bary_vectors[c][1] + grad_bary_vectors[d][1])));
+                      
+                      du(o,2) = (Legendre_i[Legendre_i.size()-2] * grad_bary_vectors[b][2] +
+                                 R_i[R_i.size()-2] * (grad_bary_vectors[a][2] +grad_bary_vectors[b][2]))
+                                 * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_l.size()-1]
+                      + (int_Legendre_i[int_Legendre_i.size()-1] * (Jacobi_j[Jacobi_j.size()-2] * grad_bary_vectors[c][2] + R_j[R_j.size()-2] * (grad_bary_vectors[a][2] + grad_bary_vectors[b][2] + grad_bary_vectors[c][2])) * int_Jacobi_l[int_Jacobi_l.size()-1])
+                      + (int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2] * grad_bary_vectors[d][2] + R_l[R_l.size()-2] * (grad_bary_vectors[a][2] + grad_bary_vectors[b][2] + grad_bary_vectors[c][2] + grad_bary_vectors[d][2])));
+                      
+                      du(o,3) = (Legendre_i[Legendre_i.size()-2] * grad_bary_vectors[b][3] +
+                                 R_i[R_i.size()-2] * (grad_bary_vectors[a][3] +grad_bary_vectors[b][3]))
+                                 * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_l.size()-1]
+                      + (int_Legendre_i[int_Legendre_i.size()-1] * (Jacobi_j[Jacobi_j.size()-2] * grad_bary_vectors[c][3] + R_j[R_j.size()-2] * (grad_bary_vectors[a][3] + grad_bary_vectors[b][3] + grad_bary_vectors[c][3])) * int_Jacobi_l[int_Jacobi_l.size()-1])
+                      + (int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2] * grad_bary_vectors[d][3] + R_l[R_l.size()-2] * (grad_bary_vectors[a][3] + grad_bary_vectors[b][3] + grad_bary_vectors[c][3] + grad_bary_vectors[d][3])));
+                      o++;
+                          
+                  }
+              }
+          }
+      }
+  }// end of Facets
+
+           
+    //Interiors
+   for(int i=2; i<=p;i++)
+   {
+       for(int j=1; j<=p;j++)
+       {
+           for(int l=1; l<=p;l++)
+           {
+               for(int m=1; m<=p;m++)
+               {
+                   if ((i+j+l+m)<=p)
+                   {
+                       // define lamda
+                       La = bary_vector[0];
+                       Lb = bary_vector[1];
+                       Lc = bary_vector[2];
+                       Ld = bary_vector[3];
+                       Le = bary_vector[4];
+                       
+                       // compute polynomials
+                       double x = Lb;
+                       double y = La + Lb;
+                       std::vector<double> int_Legendre_i;
+                       poly1d.CalcIntLegendre(i, x, y, int_Legendre_i);
+                       
+                       double alpha = 2.0*i;
+                       x = Lc;
+                       y = La + Lb + Lc;
+                       std::vector<double> int_Jacobi_j;
+                       poly1d.CalcIntJacobi(j, x, y, alpha, int_Jacobi_j);
+                       
+                       alpha = 2.0*(i+j);
+                       x = Ld;
+                       y = La + Lb + Lc + Ld;
+                       std::vector<double> int_Jacobi_l;
+                       poly1d.CalcIntJacobi(l, x, y, alpha, int_Jacobi_l);
+                       
+                       alpha = 2.0*(i + j + l);
+                       x = Le;
+                       y = 1.0;
+                       std::vector<double> int_Jacobi_m;
+                       poly1d.CalcIntJacobi(m, x, y, alpha, int_Jacobi_m);
+                       
+                       // compute polynomials for grad(L_i)
+                       std::vector<double> Legendre_i; // Use i-1 polynomial
+                       x = Lb;
+                       y = La + Lb;
+                       poly1d.CalcLegendreShifted(i, x, y, Legendre_i);
+                       
+                       std::vector<double> R_i; // Use i-1 polynomial
+                       x = Lb;
+                       y = La + Lb;
+                       poly1d.CalcRLegendre(i, x, y, R_i);
+                       
+                       // compute polynimials for grad(L_j^2i)
+                       std::vector<double> Jacobi_j; // Use i-1 polynomial
+                       x = Lc;
+                       y = La + Lb + Lc;
+                       alpha = 2.0*i;
+                       poly1d.CalcJacobi(j, x, y, alpha, Jacobi_j);
+                       
+                       std::vector<double> R_j; // Use i-1 polynomial
+                       x = Lc;
+                       y = La + Lb + Lc;
+                       poly1d.CalcRJacobi(j, x, y, alpha, R_j);
+                       
+                       // compute polynimials for grad(L_l^2(i+j))
+                       std::vector<double> Jacobi_l; // Use i-1 polynomial
+                       x = Ld;
+                       y = La + Lb + Lc + Ld;
+                       alpha = 2.0*(i+j);
+                       poly1d.CalcJacobi(l, x, y, alpha, Jacobi_l);
+                       
+                       std::vector<double> R_l; // Use i-1 polynomial
+                       x = Ld;
+                       y = La + Lb + Lc + Ld;
+                       poly1d.CalcRJacobi(l, x, y, alpha, R_l);
+                       
+                       // compute polynimials for grad(L_m^2(i+j+l))
+                       std::vector<double> Jacobi_m; // Use i-1 polynomial
+                       x = Le;
+                       y = 1.0;
+                       alpha = 2.0*(i+j+l);
+                       poly1d.CalcJacobi(m, x, y, alpha, Jacobi_m);
+                       
+//                       std::vector<double> R_m; // Use i-1 polynomial
+//                       x = Le;
+//                       y = 1;
+//                       poly1d.CalcRJacobi(m, x, y, alpha, R_m);
+                       
+                       
+                       // Add Basis Funcitons
+                       //std::cout << "o = " << o << std::endl;
+                       
+                       double dA = ((Legendre_i[Legendre_i.size()-2] * grad_bary_vectors[1][0] +
+                                  R_i[R_i.size()-2] * (grad_bary_vectors[0][0] +grad_bary_vectors[1][0]))
+                                  * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_l.size()-1] * int_Jacobi_m[int_Jacobi_m.size()-1]
+                       +  int_Legendre_i[int_Legendre_i.size()-1] * (Jacobi_j[Jacobi_j.size()-2] * grad_bary_vectors[2][0] + R_j[R_j.size()-2] * (grad_bary_vectors[0][0] + grad_bary_vectors[1][0] + grad_bary_vectors[2][0])) * int_Jacobi_l[int_Jacobi_l.size()-1] * int_Jacobi_m[int_Jacobi_m.size()-1]
+                       + int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2] * grad_bary_vectors[3][0] + R_l[R_l.size()-2] * (grad_bary_vectors[0][0] + grad_bary_vectors[1][0] + grad_bary_vectors[2][0] + grad_bary_vectors[3][0])) *  int_Jacobi_m[int_Jacobi_m.size()-1]
+                       + int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_m.size()-1] * (Jacobi_m[Jacobi_m.size()-2] * grad_bary_vectors[4][0]));
+                       du(o, 0) = dA;
+                       //std::cout << "dA = " << dA << std::endl;
+                       
+                       double dB = ((Legendre_i[Legendre_i.size()-2] * grad_bary_vectors[1][1] +
+                                  R_i[R_i.size()-2] * (grad_bary_vectors[0][1] +grad_bary_vectors[1][1]))
+                                  * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_l.size()-1] * int_Jacobi_m[int_Jacobi_m.size()-1]
+                       +  int_Legendre_i[int_Legendre_i.size()-1] * (Jacobi_j[Jacobi_j.size()-2] * grad_bary_vectors[2][1] + R_j[R_j.size()-2] * (grad_bary_vectors[0][1] + grad_bary_vectors[1][1] + grad_bary_vectors[2][1])) * int_Jacobi_l[int_Jacobi_l.size()-1] * int_Jacobi_m[int_Jacobi_m.size()-1]
+                       + int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2] * grad_bary_vectors[3][1] + R_l[R_l.size()-2] * (grad_bary_vectors[0][1] + grad_bary_vectors[1][1] + grad_bary_vectors[2][1] + grad_bary_vectors[3][1])) *  int_Jacobi_m[int_Jacobi_m.size()-1]
+                       + int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_m.size()-1] * (Jacobi_m[Jacobi_m.size()-2] * grad_bary_vectors[4][1]));
+                       du(o, 1) = dB;
+                       //std::cout << "dB = " << dB << std::endl;
+
+                       
+                       double dC = ((Legendre_i[Legendre_i.size()-2] * grad_bary_vectors[1][2] +
+                                  R_i[R_i.size()-2] * (grad_bary_vectors[0][2] +grad_bary_vectors[1][2]))
+                                  * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_l.size()-1] * int_Jacobi_m[int_Jacobi_m.size()-1]
+                       +  int_Legendre_i[int_Legendre_i.size()-1] * (Jacobi_j[Jacobi_j.size()-2] * grad_bary_vectors[2][2] + R_j[R_j.size()-2] * (grad_bary_vectors[0][2] + grad_bary_vectors[1][2] + grad_bary_vectors[2][2])) * int_Jacobi_l[int_Jacobi_l.size()-1] * int_Jacobi_m[int_Jacobi_m.size()-1]
+                       + int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2] * grad_bary_vectors[3][2] + R_l[R_l.size()-2] * (grad_bary_vectors[0][2] + grad_bary_vectors[1][2] + grad_bary_vectors[2][2] + grad_bary_vectors[3][2])) *  int_Jacobi_m[int_Jacobi_m.size()-1]
+                       + int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_m.size()-1] * (Jacobi_m[Jacobi_m.size()-2] * grad_bary_vectors[4][2]));
+                       du(o, 2) = dC;
+                       //std::cout << "dC = " << dC << std::endl;
+
+                       
+                       double dD = ((Legendre_i[Legendre_i.size()-2] * grad_bary_vectors[1][3] +
+                                  R_i[R_i.size()-2] * (grad_bary_vectors[0][3] +grad_bary_vectors[1][3]))
+                                  * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_l.size()-1] * int_Jacobi_m[int_Jacobi_m.size()-1]
+                       +  int_Legendre_i[int_Legendre_i.size()-1] * (Jacobi_j[Jacobi_j.size()-2] * grad_bary_vectors[2][3] + R_j[R_j.size()-2] * (grad_bary_vectors[0][3] + grad_bary_vectors[1][3] + grad_bary_vectors[2][3])) * int_Jacobi_l[int_Jacobi_l.size()-1] * int_Jacobi_m[int_Jacobi_m.size()-1]
+                       + int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2] * grad_bary_vectors[3][3] + R_l[R_l.size()-2] * (grad_bary_vectors[0][3] + grad_bary_vectors[1][3] + grad_bary_vectors[2][3] + grad_bary_vectors[3][3])) *  int_Jacobi_m[int_Jacobi_m.size()-1]
+                       + int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_m.size()-1] * (Jacobi_m[Jacobi_m.size()-2] * grad_bary_vectors[4][3]));
+                       du(o, 3) = dD;
+                       //std::cout << "dD = " << dD << std::endl;
+
+                       /*
+                       double testDA = (grad_bary_vectors[0][0]*Lb*Lc*Ld*Le + La*grad_bary_vectors[1][0]*Lc*Ld*Le
+                                         + La*Lb*grad_bary_vectors[2][0]*Ld*Le + La*Lb*Lc*grad_bary_vectors[3][0]*Le
+                                         + La*Lb*Lc*Ld*grad_bary_vectors[4][0]);
+                       //std::cout << "testDA= " << testDA << std::endl;
+                       du(o, 0) = testDA;
+
+                       
+                       double testDB = (grad_bary_vectors[0][1]*Lb*Lc*Ld*Le + La*grad_bary_vectors[1][1]*Lc*Ld*Le
+                                         + La*Lb*grad_bary_vectors[2][1]*Ld*Le + La*Lb*Lc*grad_bary_vectors[3][1]*Le
+                                         + La*Lb*Lc*Ld*grad_bary_vectors[4][1]);
+                       //std::cout << "testDB= " << testDB << std::endl;
+                       du(o, 1) = testDB;
+
+
+                       
+                       double testDC = (grad_bary_vectors[0][2]*Lb*Lc*Ld*Le + La*grad_bary_vectors[1][2]*Lc*Ld*Le
+                                         + La*Lb*grad_bary_vectors[2][2]*Ld*Le + La*Lb*Lc*grad_bary_vectors[3][2]*Le
+                                         + La*Lb*Lc*Ld*grad_bary_vectors[4][2]);
+                       
+                       //std::cout << "testDC= " << testDC << std::endl;
+                       du(o, 2) = testDC;
+
+
+                       
+                       double testDD = (grad_bary_vectors[0][3]*Lb*Lc*Ld*Le + La*grad_bary_vectors[1][3]*Lc*Ld*Le
+                                         + La*Lb*grad_bary_vectors[2][3]*Ld*Le + La*Lb*Lc*grad_bary_vectors[3][3]*Le
+                                         + La*Lb*Lc*Ld*grad_bary_vectors[4][3]);
+                       //std::cout << "testDD= " << testDD << std::endl;
+                       du(o, 3) = testDD;
+
+
+                       
+                       o++;*/
+                       o++;
+                       
+                   }
+               }
+           }
+       }
+   } //end of Interiors
+    
+   Ti.Mult(du, dshape);
+}
+
+void H1_PentatopeElement_Barycentric::CalcHessian(const IntegrationPoint &ip,
+                                      DenseMatrix &ddshape) const
+{
+    //Do Nothing
+    mfem_error("H1_PentatopeElement_Barycentric::CalcHessian not implemented");
+}
+
+
 
 // TODO: use a FunctionSpace specific to wedges instead of Qk.
 H1_WedgeElement::H1_WedgeElement(const int p,

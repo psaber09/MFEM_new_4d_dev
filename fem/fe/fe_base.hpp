@@ -1229,6 +1229,24 @@ public:
 
    static void CalcLegendre(const int p, const real_t x, real_t *u);
    static void CalcLegendre(const int p, const real_t x, real_t *u, real_t *d);
+   static void CalcLegendre(const int &p, const double &x, std::vector<double> &u, std::vector<double> &d);
+
+  
+   static void CalcLegendreShifted(const int &p, const double &x, const double &t, std::vector<double> &u);
+   static void CalcScaledLegendreDerivative(const int &p, const double &x, const double &t,
+                                             std::vector<double> &u,
+                                             std::vector<double> &dudx, std::vector<double> &dudt);
+     
+   static void CalcIntLegendre(const int &p, const double &x, const double &t, std::vector<double> &u);
+   static void CalcJacobi(const int &p, const double &x, const double &t ,const double &alpha, std::vector<double> &u);
+   static void CalcScaledJacobiDerivative(const int &p, const double &alpha,
+                                           const double &x, const double &t,
+                                           std::vector<double> &u, std::vector<double> &dudx, std::vector<double> &dudt);
+     
+   static void CalcIntJacobi(const int &p, const double &x, const double &t, const double &alpha, std::vector<double> &u);
+     
+   static void CalcRLegendre(const int &p, const double &x, const double &t, std::vector<double> &u);
+   static void CalcRJacobi(const int &p, const double &x, const double &t, const double &alpha, std::vector<double> &u);
 
    ~Poly_1D() = default;
 };

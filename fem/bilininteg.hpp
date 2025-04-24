@@ -289,7 +289,7 @@ public:
                                     Vector &flux, Vector *d_energy = NULL)
    { return 0.0; }
     
-   //void SetIntRule(const IntegrationRule *ir) { IntRule = ir; }
+   void SetIntRule(const IntegrationRule *ir) { IntRule = ir; }
 
 
    /** @brief For bilinear forms on element faces, specifies if the normal

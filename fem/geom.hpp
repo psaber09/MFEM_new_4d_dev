@@ -41,7 +41,7 @@ public:
    enum Type
    {
       INVALID = -1,
-      POINT = 0, SEGMENT, TRIANGLE, SQUARE, TETRAHEDRON, CUBE, PRISM, PYRAMID, PENTATOPE, TESSERACT,
+      POINT = 0, SEGMENT, TRIANGLE, SQUARE, TETRAHEDRON, CUBE, PRISM, PYRAMID, PENTATOPE,
       NUM_GEOMETRIES
    };
 
@@ -288,23 +288,6 @@ template <> struct Geometry::Constants<Geometry::PENTATOPE>
    };
 };
 
-template <> struct Geometry::Constants<Geometry::TESSERACT>
-{
-   static const int Dimension = 4;
-   static const int NumVert = 16;
-   static const int NumEdges = 32;
-   static const int Edges[NumEdges][2];
-   static const int NumFaces = 8;
-   static const int FaceTypes[NumFaces];
-   static const int MaxFaceVert = 8;
-   static const int FaceVert[NumFaces][MaxFaceVert];
-   // Lower-triangular part of the local vertex-to-vertex graph.
-   struct VertToVert
-   {
-      static const int I[NumVert];
-      static const int J[NumEdges][2]; // {end,edge_idx}
-   };
-};
 
 template <> struct
 /// @cond Suppress_Doxygen_warnings

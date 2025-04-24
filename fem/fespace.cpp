@@ -617,8 +617,7 @@ void FiniteElementSpace::GetEssentialVDofs(const Array<int> &bdr_attr_is_ess,
    if (Nonconforming())
    {
       Array<int> bdr_verts, bdr_edges, bdr_faces, bdr_planars;
-      mesh->ncmesh->GetBoundaryClosure(bdr_attr_is_ess, bdr_verts, bdr_edges,
-                                       bdr_faces);
+      mesh->ncmesh->GetBoundaryClosure(bdr_attr_is_ess, bdr_verts, bdr_edges, bdr_planars, bdr_faces);
       for (auto v : bdr_verts)
       {
          if (component < 0)
@@ -659,21 +658,6 @@ void FiniteElementSpace::GetEssentialVDofs(const Array<int> &bdr_attr_is_ess,
           MarkDofs(dofs, ess_vdofs);
 
        }
-//       for (int i = 0; i < bdr_planars.Size(); i++)
-//       {
-//          if (component < 0)
-//          {
-//             GetPlanarVDofs(bdr_planars[i], vdofs);
-//             mark_dofs(vdofs, ess_vdofs);
-//          }
-//          else
-//          {
-//             GetPlanarVDofs(bdr_planars[i], dofs);
-//             for (int d = 0; d < dofs.Size(); d++)
-//             { dofs[d] = DofToVDof(dofs[d], component); }
-//             MarkDofs(dofs, ess_vdofs);
-//          }
-//       }
       for (auto f : bdr_faces)
       {
          if (component < 0)
@@ -3067,7 +3051,7 @@ void FiniteElementSpace::Construct()
       }
    }
     
-    if (mesh->Dimension() >= 4 && mesh->GetNE())
+    if (mesh->Dimension() >= 4 && mesh->GetNPlanars())
     {
        // Here we assume that all planars in the mesh have the same base
        // geometry -- the base geometry of the 0-th face element.
@@ -3828,7 +3812,7 @@ void FiniteElementSpace::GetBdrElementDofs(int bel, Array<int> &dofs,
    }
 
    dofs.SetSize(0);
-   dofs.Reserve(nv*V.Size() + ne*E.Size() + np * P.Size() + nf);
+   dofs.Reserve(nv*V.Size() + ne*E.Size() + np*P.Size() + nf);
 
    if (nv) // vertex DOFs
    {
@@ -3876,7 +3860,7 @@ void FiniteElementSpace::GetBdrElementDofs(int bel, Array<int> &dofs,
 
       for (int j = 0; j < nf; j++)
       {
-         dofs.Append(EncodeDof(nvdofs + nedofs + fbase, ind[j]));
+         dofs.Append(EncodeDof(nvdofs + nedofs + npdofs + fbase, ind[j]));
       }
    }
 }
@@ -3947,7 +3931,7 @@ int FiniteElementSpace::GetFaceDofs(int face, Array<int> &dofs,
    if (np) { mesh->GetFacePlanars(face, P, Po); }
 
    dofs.SetSize(0);
-   dofs.Reserve(V.Size() * nv + E.Size() * ne + nf);
+   dofs.Reserve(V.Size() * nv + E.Size() * ne + P.Size() * np + nf);
 
    if (nv) // vertex DOFs
    {
@@ -4003,23 +3987,16 @@ void FiniteElementSpace::GetPlanarDofs(int planar, Array<int> &dofs) const
    //    return;
    // }
 
-   Array<int> V, E, Eo; // TODO: LocalArray
 
    int dim = mesh->Dimension();
    int order = fec->GetOrder();
 
-   // if (IsVariableOrder()) // determine order from adjacent element
-   // {
-   //    int elem, info;
-   //    mesh->GetBdrElementAdjacentElement(bel, elem, info);
-   //    order = elem_order[elem];
-   // }
-
    int nv = fec->GetNumDof(Geometry::POINT, order);
    int ne = (dim > 1) ? fec->GetNumDof(Geometry::SEGMENT, order) : 0;
-   int np = fec->GetNumDof(Geometry::TRIANGLE, order);
-
-   if (nv) { mesh->GetPlanVertices(planar, V); }
+   int np = (dim > 3) ? fec->GetNumDof(Geometry::TRIANGLE, order) : 0;
+    
+   Array<int> V, E, Eo; // TODO: LocalArray
+   if (nv) { mesh->GetPlanarVertices(planar, V); }
    if (ne) { mesh->GetPlanarEdges(planar, E, Eo); }
 
    dofs.SetSize(0);
@@ -4830,9 +4807,8 @@ void FiniteElementSpace
 
    if (Nonconforming())
    {
-      Array<int> bdr_verts, bdr_edges, bdr_faces;
-      mesh->ncmesh->GetBoundaryClosure(bdr_attr_is_ess, bdr_verts, bdr_edges,
-                                       bdr_faces);
+      Array<int> bdr_verts, bdr_edges, bdr_planars, bdr_faces;
+      mesh->ncmesh->GetBoundaryClosure(bdr_attr_is_ess, bdr_verts, bdr_edges, bdr_planars, bdr_faces);
 
       for (auto e : bdr_edges)
       {

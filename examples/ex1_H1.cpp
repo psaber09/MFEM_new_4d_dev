@@ -192,7 +192,7 @@ int main(int argc, char *argv[])
     GridFunction x(fespace);
     FunctionCoefficient E(E_exact);
     FunctionCoefficient Q(Q_exact);
-    x.ProjectCoefficient(Q);
+    x.ProjectCoefficient(E);
     
     const IntegrationRule* irs[Geometry::NumGeom];
     for (int i = 0; i < Geometry::NumGeom; i++)
@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
  
 
     // 8a. Compute and print the L^2 norm of the error.
-   cout << "\n Initial || E_h - E ||_{L^2} = " << x.ComputeL2Error(Q, irs) << '\n' << endl;
+   //cout << "\n Initial || E_h - E ||_{L^2} = " << x.ComputeL2Error(Q, irs) << '\n' << endl;
 
    // 9. Set up the bilinear form a(.,.) on the finite element space
    //    corresponding to the Laplacian operator -Delta, by adding the Diffusion
@@ -379,7 +379,7 @@ double Q_exact(const Vector &x)
     
     if (dim == 4)
     {
-        Q_out = x(0)*x(1)*x(2)*x(3);
+        Q_out = x(0)*x(1)*x(2)*x(3)*x(0)*x(1)*x(2);
         
         //Q_out = x(0)*(1. - x(0)) * x(1)*(1. - x(1)) * x(2)*(1. - x(2)) * x(3)*(1. - x(3));
         

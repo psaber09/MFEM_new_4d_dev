@@ -553,7 +553,6 @@ private:
    Array<IntegrationRule *> PrismIntRules;
    Array<IntegrationRule *> CubeIntRules;
    Array<IntegrationRule *> PentatopeIntRules;
-   Array<IntegrationRule *> TesseractIntRules;
 
 #if defined(MFEM_THREAD_SAFE) && defined(MFEM_USE_OPENMP)
    Array<omp_lock_t> IntRuleLocks;
@@ -589,7 +588,6 @@ private:
    IntegrationRule *PrismIntegrationRule(int Order);
    IntegrationRule *CubeIntegrationRule(int Order);
    IntegrationRule *PentatopeIntegrationRule(int Order);
-   IntegrationRule *TesseractIntegrationRule(int Order);
 
 public:
    /// Sets initial sizes for the integration rule arrays, but rules

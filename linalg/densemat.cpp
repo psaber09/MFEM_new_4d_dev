@@ -600,13 +600,13 @@ real_t DenseMatrix::Weight() const
    }
    else if ((Height() == 4) && (Width() == 3))
    {
-      const double *d = data;
-      double A = d[0]*d[0] + d[1]*d[1] + d[2]*d[2] + d[3]*d[3];
-      double B = d[0]*d[4] + d[1]*d[5] + d[2]*d[6] + d[3]*d[7];
-      double C = d[0]*d[8] + d[1]*d[9] + d[2]*d[10] + d[3]*d[11];
-      double D = d[4]*d[4] + d[5]*d[5] + d[6]*d[6] + d[7]*d[7];
-      double E = d[4]*d[8] + d[5]*d[9] + d[6]*d[10] + d[7]*d[11];
-      double F = d[8]*d[8] + d[9]*d[9] + d[10]*d[10] + d[11]*d[11];
+      const real_t *d = data;
+      real_t A = d[0]*d[0] + d[1]*d[1] + d[2]*d[2] + d[3]*d[3];
+      real_t B = d[0]*d[4] + d[1]*d[5] + d[2]*d[6] + d[3]*d[7];
+      real_t C = d[0]*d[8] + d[1]*d[9] + d[2]*d[10] + d[3]*d[11];
+      real_t D = d[4]*d[4] + d[5]*d[5] + d[6]*d[6] + d[7]*d[7];
+      real_t E = d[4]*d[8] + d[5]*d[9] + d[6]*d[10] + d[7]*d[11];
+      real_t F = d[8]*d[8] + d[9]*d[9] + d[10]*d[10] + d[11]*d[11];
 
 
       return sqrt( C *( 2*B*E - C*D ) - A*E*E + F * ( A * D - B * B) );

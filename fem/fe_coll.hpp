@@ -872,7 +872,6 @@ private:
    const LinearWedgeFiniteElement WedgeFE;
    const LinearPyramidFiniteElement PyramidFE;
    const Linear4DFiniteElement PentatopeFE;
-   const QuadLinear4DFiniteElement TesseractFE;
 public:
    LinearFECollection() : FiniteElementCollection(1) {}
 

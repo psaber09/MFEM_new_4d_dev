@@ -19,11 +19,11 @@ namespace mfem
 const char *Geometry::Name[NumGeom] =
 {
    "Point", "Segment", "Triangle", "Square", "Tetrahedron", "Cube", "Prism",
-   "Pyramid", "Pentatope", "Tesseract"
+   "Pyramid", "Pentatope"
 };
 
 const real_t Geometry::Volume[NumGeom] =
-{ 1.0, 1.0, 0.5, 1.0, 1./6, 1.0, 0.5, 1./3, 1./24, 1.0 };
+{ 1.0, 1.0, 0.5, 1.0, 1./6, 1.0, 0.5, 1./3, 1./24 };
 
 Geometry::Geometry()
 {
@@ -1056,13 +1056,13 @@ void Geometry::JacToPerfJac(int GeomType, const DenseMatrix &J,
    }
 }
 
-const int Geometry::NumBdrArray[NumGeom] = { 0, 2, 3, 4, 4, 6, 5, 5, 5, 24 };
-const int Geometry::Dimension[NumGeom] = { 0, 1, 2, 2, 3, 3, 3, 3, 4, 4 };
+const int Geometry::NumBdrArray[NumGeom] = { 0, 2, 3, 4, 4, 6, 5, 5, 5 };
+const int Geometry::Dimension[NumGeom] = { 0, 1, 2, 2, 3, 3, 3, 3, 4 };
 const int Geometry::DimStart[MaxDim+2] =
 { POINT, SEGMENT, TRIANGLE, TETRAHEDRON, PENTATOPE, NUM_GEOMETRIES };
-const int Geometry::NumVerts[NumGeom] = { 1, 2, 3, 4, 4, 8, 6, 5, 5, 16 };
-const int Geometry::NumEdges[NumGeom] = { 0, 1, 3, 4, 6, 12, 9, 8, 10, 32 };
-const int Geometry::NumFaces[NumGeom] = { 0, 0, 1, 1, 4, 6, 5, 5, 5, 24 };
+const int Geometry::NumVerts[NumGeom] = { 1, 2, 3, 4, 4, 8, 6, 5, 5 };
+const int Geometry::NumEdges[NumGeom] = { 0, 1, 3, 4, 6, 12, 9, 8, 10 };
+const int Geometry::NumFaces[NumGeom] = { 0, 0, 1, 1, 4, 6, 5, 5, 5 };
 
 const int Geometry::
 Constants<Geometry::POINT>::Orient[1][1] = {{0}};
@@ -1267,28 +1267,6 @@ Constants<Geometry::PENTATOPE>::PlanarVert[10][3] =
 //const int Geometry::
 //Constants<Geometry::PENTATOPE>::VertToVert::J[6][2] =
 //{{1, 0}, {2, 1}, {3, 2}, {2, 3}, {3, 4}, {3, 5}};
-
-
-const int Geometry::
-Constants<Geometry::TESSERACT>::FaceVert[8][8] =
-{
-   // {8,11,12,15,0,3,4,7},   //x bottom
-   // {1,2,6,5,9,10,14,13},   //x top
-   // {0,1,5,4,8,9,13,12},    //y bottom
-   // {2,3,7,6,10,11,15,14},  //y top
-   // {8,9,10,11,0,1,2,3},    // z bottom
-   // {4,5,6,7,12,13,14,15},  //z top
-   // {0,1,2,3,4,5,6,7},      //t botom
-   // {12,13,14,15,8,9,10,11} //t top
-   {8,11,15,12,0,3,7,4},   //x bottom
-   {1,2,6,5,9,10,14,13},   //x top
-   {0,1,5,4,8,9,13,12},    //y bottom
-   {2,3,7,6,10,11,15,14},  //y top
-   {8,9,10,11,0,1,2,3},    // z bottom
-   {4,5,6,7,12,13,14,15},  //z top
-   {0,1,2,3,4,5,6,7},      //t botom
-   {12,13,14,15,8,9,10,11} //t top
-};
 
 
 GeometryRefiner::~GeometryRefiner()

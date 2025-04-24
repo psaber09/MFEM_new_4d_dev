@@ -2117,8 +2117,8 @@ void GridFunction::AccumulateAndCountBdrValues(
       Vector vals;
       Mesh *mesh = fes->GetMesh();
       NCMesh *ncmesh = mesh->ncmesh;
-      Array<int> bdr_edges, bdr_vertices, bdr_faces, bdr_planars;
-      ncmesh->GetBoundaryClosure(attr, bdr_vertices, bdr_edges, bdr_faces);
+      Array<int> bdr_edges, bdr_vertices, bdr_planars, bdr_faces;
+      ncmesh->GetBoundaryClosure(attr, bdr_vertices, bdr_edges, bdr_planars, bdr_faces);
 
       auto mark_dofs = [&](ElementTransformation &transf, const FiniteElement &fe)
       {
@@ -2183,36 +2183,15 @@ void GridFunction::AccumulateAndCountBdrValues(
          mark_dofs(*transf, *fe);
       }
        
-//     for (i = 0; i < bdr_planars.Size(); i++)
-//     {
-//         int planar = bdr_planars[i];
-//         fes->GetPlanarVDofs(planar, vdofs);
-//         if (vdofs.Size() == 0) { continue; }
-//
-//         transf = mesh->GetPlanarTransformation(planar);
-//         transf->Attribute = -1; // FIXME: set the boundary attribute
-//         fe = fes->GetPlanarElement(planar);
-//         vals.SetSize(fe->GetDof());
-//         for (d = 0; d < vdim; d++)
-//         {
-//             if (!coeff[d]) { continue; }
-//
-//             fe->Project(*coeff[d], *transf, vals);
-//             for (int k = 0; k < vals.Size(); k++)
-//             {
-//                 ind = vdofs[d*vals.Size()+k];
-//                 if (++values_counter[ind] == 1)
-//                 {
-//                    (*this)(ind) = vals(k);
-//                 }
-//                 else
-//                 {
-//                    (*this)(ind) += vals(k);
-//                 }
-//             }
-//          }
-//      }
-       
+      for (auto planar : bdr_planars)
+      {
+         fes->GetFaceVDofs(planar, vdofs);
+         if (vdofs.Size() == 0) { continue; }
+
+         ElementTransformation *transf = mesh->GetFaceTransformation(planar);
+         const FiniteElement *fe = fes->GetFaceElement(planar);
+         mark_dofs(*transf, *fe);
+       }
    }
 }
 
@@ -2269,8 +2248,8 @@ void GridFunction::AccumulateAndCountBdrTangentValues(
    {
       Mesh *mesh = fes->GetMesh();
       NCMesh *ncmesh = mesh->ncmesh;
-      Array<int> bdr_edges, bdr_vertices, bdr_faces;
-      ncmesh->GetBoundaryClosure(bdr_attr, bdr_vertices, bdr_edges, bdr_faces);
+      Array<int> bdr_edges, bdr_vertices, bdr_planars, bdr_faces;
+      ncmesh->GetBoundaryClosure(bdr_attr, bdr_vertices, bdr_edges, bdr_planars, bdr_faces);
 
       for (auto edge : bdr_edges)
       {

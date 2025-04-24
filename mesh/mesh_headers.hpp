@@ -23,7 +23,6 @@
 #include "hexahedron.hpp"
 #include "tetrahedron.hpp"
 #include "pentatope.hpp"
-#include "tesseract.hpp"
 #include "ncmesh.hpp"
 #include "mesh.hpp"
 #include "mesh_operators.hpp"
