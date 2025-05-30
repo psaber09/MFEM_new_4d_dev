@@ -30,6 +30,7 @@ set(SRCS
   triangle.cpp
   vertex.cpp
   vtk.cpp
+  vtkhdf.cpp
   wedge.cpp
   pentatope.cpp
   submesh/submesh.cpp
@@ -59,6 +60,7 @@ set(HDRS
   triangle.hpp
   vertex.hpp
   vtk.hpp
+  vtkhdf.hpp
   wedge.hpp
   pentatope.hpp
   submesh/ncsubmesh.hpp
