@@ -65,10 +65,12 @@ using namespace std;
 using namespace mfem;
 
 // Exact solution, E, and r.h.s., f. See below for implementation.
+void U_function(const Vector &, Vector &);
+//void velocity_function(const Vector &x, Vector &v);
 double E_exact(const Vector &);
 double f_exact(const Vector &);
-double Q_exact(const Vector &);
-double freq = 1.0, kappa;
+double freq = 1.0;
+double kappa = 1.0;
 int dim;
 
 int main(int argc, char *argv[])
@@ -116,6 +118,7 @@ int main(int argc, char *argv[])
     //    the same code.
     Mesh *mesh = new Mesh(mesh_file, 1, 1);
     dim = mesh->Dimension();
+    std::cout << "Dimension: " << dim << std::endl;
     int sdim = mesh->SpaceDimension();
     
     // 4. Refine the mesh to increase the resolution. In this example we do
@@ -138,7 +141,9 @@ int main(int argc, char *argv[])
     bool delete_fec;
     if (order > 0)
     {
-        fec = new H1_FECollection(order, dim);
+        //fec = new H1_FECollection(order, dim);
+        fec = new DG_FECollection(order, dim);
+
         delete_fec = true;
     }
     else if (mesh->GetNodes())
@@ -149,7 +154,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-        fec = new H1_FECollection(order = 1, dim);
+        fec = new DG_FECollection(order = 1, dim);
         delete_fec = true;
     }
     FiniteElementSpace *fespace = new FiniteElementSpace(mesh, fec);
@@ -160,13 +165,13 @@ int main(int argc, char *argv[])
     //    In this example, the boundary conditions are defined by marking all
     //    the boundary attributes from the mesh as essential (Dirichlet) and
     //    converting them to a list of true dofs.
-    Array<int> ess_tdof_list;
-    if (mesh->bdr_attributes.Size())
-    {
-        Array<int> ess_bdr(mesh->bdr_attributes.Max());
-        ess_bdr = 1;
-        fespace->GetEssentialTrueDofs(ess_bdr, ess_tdof_list);
-    }
+//    Array<int> ess_tdof_list;
+//    if (mesh->bdr_attributes.Size())
+//    {
+//        Array<int> ess_bdr(mesh->bdr_attributes.Max());
+//        ess_bdr = 1;
+//        fespace->GetEssentialTrueDofs(ess_bdr, ess_tdof_list);
+//    }
     
     // 7. Set up the linear form b(.) which corresponds to the right-hand side
     //    of the FEM linear system, which in this case is (f,phi_i) where f is
@@ -176,13 +181,14 @@ int main(int argc, char *argv[])
     LinearForm *b = new LinearForm(fespace);
     b->AddDomainIntegrator(new DomainLFIntegrator(f));
     b->Assemble();
-    
     ConstantCoefficient one(1.0);
+    
     /*
      LinearForm *b = new LinearForm(fespace);
      b->AddDomainIntegrator(new DomainLFIntegrator(one));
      b->Assemble();
      */
+    
     
     // 8. Define the solution vector x as a finite element grid function
     //    corresponding to fespace. Initialize x by projecting the exact
@@ -190,9 +196,13 @@ int main(int argc, char *argv[])
     //    when eliminating the non-homogeneous boundary condition to modify the
     //    r.h.s. vector b.
     GridFunction x(fespace);
+    
+    VectorFunctionCoefficient U(dim, U_function);
+
     FunctionCoefficient E(E_exact);
-    FunctionCoefficient Q(Q_exact);
+    //FunctionCoefficient Q(Q_exact);
     x.ProjectCoefficient(E);
+    //x = 0;
     
     const IntegrationRule* irs[Geometry::NumGeom];
     for (int i = 0; i < Geometry::NumGeom; i++)
@@ -218,42 +228,42 @@ int main(int argc, char *argv[])
    //    domain integrator.
    BilinearForm *a = new BilinearForm(fespace);
    if (pa) { a->SetAssemblyLevel(AssemblyLevel::PARTIAL); }
-   a->AddDomainIntegrator(new DiffusionIntegrator(one)); // -Delta u
-//    a->AddDomainIntegrator(new DiffusionIntegrator(f)); // - div(f grad u)
-   //a->AddDomainIntegrator(new DiffusionIntegrator(*f));
+    
+   constexpr double alpha = -1.0;
+   //a->AddDomainIntegrator(new MixedScalarWeakDivergenceIntegrator(U));
+   a->AddDomainIntegrator(new ConvectionIntegrator(U, alpha));
+//   a->AddInteriorFaceIntegrator(new DGTraceIntegrator(U, alpha));
+//   a->AddBdrFaceIntegrator(new DGTraceIntegrator(U, alpha));
+    a->AddInteriorFaceIntegrator(
+       new NonconservativeDGTraceIntegrator(U, alpha));
+    a->AddBdrFaceIntegrator(
+       new NonconservativeDGTraceIntegrator(U, alpha));
+
     
    // 10. Assemble the bilinear form and the corresponding linear system,
    //     applying any necessary transformations such as: eliminating boundary
    //     conditions, applying conforming constraints for non-conforming AMR,
    //     static condensation, etc.
-   if (static_cond) { a->EnableStaticCondensation(); }
-    
-   //cout << "Madeit" << std::endl;
-
+//   if (static_cond) { a->EnableStaticCondensation(); }
    a->Assemble();
-    
-   //cout << "Madeit2" << std::endl;
-
 
    OperatorPtr A;
    Vector B, X;
-   a->FormLinearSystem(ess_tdof_list, x, *b, A, X, B); // x = x_ess + X
+    
+   Array<int> empty_tdof_list;
+   a->FormLinearSystem(empty_tdof_list, x, *b, A, X, B);
+   //a->FormLinearSystem(ess_tdof_list, x, *b, A, X, B); // x = x_ess + X
    // A*X = f - A*x_ess = B
-
-    //std::ofstream A_file("A_matrix.txt");
-
-    // A->PrintMatlab(A_file);
-
 
    cout << "Size of linear system: " << A->Height() << endl;
 
-   // 11. Solve the linear system A X = B.
+   /*// 11. Solve the linear system A X = B.
    if (!pa)
    {
 #ifndef MFEM_USE_SUITESPARSE
       // Use a simple symmetric Gauss-Seidel preconditioner with PCG.   MADE CHANGE HERE TO ITER #
       GSSmoother M((SparseMatrix&)(*A));
-      PCG(*A, M, B, X, 1, 500, 1e-12, 0.0);
+      PCG(*A, M, B, X, 1, 200, 1e-12, 0.0);
 #else
       // If MFEM was compiled with SuiteSparse, use UMFPACK to solve the system.
       UMFPackSolver umf_solver;
@@ -265,41 +275,41 @@ int main(int argc, char *argv[])
    else // Jacobi preconditioning in partial assembly mode
    {
        CG(*A, B, X, 1, 400, 1e-12, 0.0);
-   }
+   }*/
     
-//    // 11. Solve the linear system A X = B.
-//     if (!pa)
-//     {
-//     #ifndef MFEM_USE_SUITESPARSE
-//     // Use GMRES with a Gauss-Seidel preconditioner
-//     GSSmoother M((SparseMatrix&)(*A));  // Gauss-Seidel preconditioner
-//     GMRESSolver gmres;                  // Create GMRES solver
-//     gmres.SetKDim(200);                 // Set the Krylov subspace dimension (restart size)
-//     gmres.SetMaxIter(200);              // Set maximum iterations
-//     gmres.SetRelTol(1e-12);             // Set relative tolerance
-//     gmres.SetPrintLevel(1);             // Print convergence information
-//     gmres.SetPreconditioner(M);         // Set the preconditioner
-//     gmres.SetOperator(*A);              // Set the operator
-//     gmres.Mult(B, X);                   // Solve the system
-//     #else
-//     // If MFEM was compiled with SuiteSparse, use UMFPACK to solve the system.
-//     UMFPackSolver umf_solver;
-//     umf_solver.Control[UMFPACK_ORDERING] = UMFPACK_ORDERING_METIS;
-//     umf_solver.SetOperator(*A);
-//     umf_solver.Mult(B, X);
-//     #endif
-//     }
-//     else // Jacobi preconditioning in partial assembly mode
-//     {
-//     GMRESSolver gmres;                  // Create GMRES solver
-//     gmres.SetKDim(400);                 // Set the Krylov subspace dimension (restart size)
-//     gmres.SetMaxIter(400);              // Set maximum iterations
-//     gmres.SetRelTol(1e-12);             // Set relative tolerance
-//     gmres.SetPrintLevel(1);             // Print convergence information
-//     gmres.SetOperator(*A);              // Set the operator
-//     gmres.Mult(B, X);                   // Solve the system
-//     }
-
+    
+    // 11. Solve the linear system A X = B.
+     if (!pa)
+     {
+     #ifndef MFEM_USE_SUITESPARSE
+     // Use GMRES with a Gauss-Seidel preconditioner
+     GSSmoother M((SparseMatrix&)(*A));  // Gauss-Seidel preconditioner
+     GMRESSolver gmres;                  // Create GMRES solver
+     gmres.SetKDim(200);                 // Set the Krylov subspace dimension (restart size)
+     gmres.SetMaxIter(200);              // Set maximum iterations
+     gmres.SetRelTol(1e-12);             // Set relative tolerance
+     gmres.SetPrintLevel(1);             // Print convergence information
+     gmres.SetPreconditioner(M);         // Set the preconditioner
+     gmres.SetOperator(*A);              // Set the operator
+     gmres.Mult(B, X);                   // Solve the system
+     #else
+     // If MFEM was compiled with SuiteSparse, use UMFPACK to solve the system.
+     UMFPackSolver umf_solver;
+     umf_solver.Control[UMFPACK_ORDERING] = UMFPACK_ORDERING_METIS;
+     umf_solver.SetOperator(*A);
+     umf_solver.Mult(B, X);
+     #endif
+     }
+     else // Jacobi preconditioning in partial assembly mode
+     {
+     GMRESSolver gmres;                  // Create GMRES solver
+     gmres.SetKDim(400);                 // Set the Krylov subspace dimension (restart size)
+     gmres.SetMaxIter(400);              // Set maximum iterations
+     gmres.SetRelTol(1e-12);             // Set relative tolerance
+     gmres.SetPrintLevel(1);             // Print convergence information
+     gmres.SetOperator(*A);              // Set the operator
+     gmres.Mult(B, X);                   // Solve the system
+     }
 
    // 12. Recover the solution as a finite element grid function.
    a->RecoverFEMSolution(X, *b, x);
@@ -340,57 +350,67 @@ int main(int argc, char *argv[])
    return 0;
 }
 
-double E_exact(const Vector &x)
+void U_function(const Vector &x, Vector &U)
 {
-    double E_out;
-
-    if (dim == 2)
-    {
-        E_out = x(0)*(1. - x(0))*x(1)*(1. - x(1));
-    }
-    
-    if (dim == 3)
-    {
-        E_out = x(0)*(1. - x(0)) * x(1)*(1. - x(1)) * x(2)*(1. - x(2));
-    }
-    
+    //std::cout << "dimension 2.0: " << dim << std::endl;
     if (dim == 4)
     {
-        E_out = x(0)*(1. - x(0)) * x(1)*(1. - x(1)) * x(2)*(1. - x(2)) * x(3)*(1. - x(3));
+        // Define constants
+        //std::cout << "in" << std::endl;
+        double alpha = 1;
+        double beta = 50;
+        // Define exp function argument
+        double phi = -1.0*(beta * (x(0)-0.5)*(x(0)-0.5)) - (beta * (x(1)-0.5)*(x(1)-0.5)) - (beta * (x(2)-0.5)*(x(2)-0.5)) - (beta * (x(3)-0.5)*(x(3)-0.5));
+        
+        // Define vector
+        U(0) = 1 + alpha * exp(phi);
+        U(1) = 1 + alpha * exp(phi);
+        U(2) = 1 + alpha * exp(phi);
+        U(3) = 1.0;
+
     }
+    if (dim == 3)
+    {
+       // Define constants
+       //std::cout << "in" << std::endl;
+
+       double alpha = 1;
+       double beta = 50;
+       // Define exp function argument
+       double phi = -1.0*(beta * (x(0)-0.5)*(x(0)-0.5)) - (beta * (x(1)-0.5)*(x(1)-0.5))  - (beta * (x(2)-0.5)*(x(2)-0.5));
+        
+       // Define vector
+       U(0) = 1 + alpha * exp(phi);
+       U(1) = 1 + alpha * exp(phi);
+       U(2) = 1.0;
+    }
+//    else
+//    {
+//        mfem_error("Function not supported for dim specified1");
+//    }
     
-    return E_out;
 }
 
-double Q_exact(const Vector &x)
+double E_exact(const Vector &x)
 {
-    double Q_out;
-
-    if (dim == 2)
-    {
-        Q_out = x(0)*x(1);
-    }
+    
+    double E_out;
+    double pi = 3.14159265359;
     
     if (dim == 3)
     {
-        Q_out = x(0)*(1. - x(0)) * x(1)*(1. - x(1)) * x(2)*(1. - x(2));
-        //Q_out = x(0)*x(1)*x(2)*x(0)*x(1)*x(2)*x(0);
-    }
-    
-    if (dim == 4)
-    {
-        Q_out = x(0)*x(1)*x(2)*x(3)*x(0)*x(1)*x(2);
         
-        //Q_out = x(0)*(1. - x(0)) * x(1)*(1. - x(1)) * x(2)*(1. - x(2)) * x(3)*(1. - x(3));
-        
-        //Q_out = x(0)*x(1)*x(2)*x(3)*(1.0 - x(0) - x(1) - x(2) - x(3));
-        
-        
-        //Q_out = x(0) * x(1) * x(2) * x(3) *  (1.0 -  x(0) - x(1) * x(2));
+        E_out = sin(kappa*pi*x(0)) * sin(kappa*pi*x(1)) * sin(kappa*pi*x(2));
 
     }
     
-    return Q_out;
+    if (dim == 4) 
+    {
+        
+        E_out = sin(kappa*pi*x(0)) * sin(kappa*pi*x(1)) * sin(kappa*pi*x(2)) * sin(kappa*pi*x(3));
+
+    }
+    return E_out;
 }
 
 double f_exact(const Vector &x)
@@ -399,20 +419,73 @@ double f_exact(const Vector &x)
 
     if (dim == 2)
     {
-        f_out = 2.0*(x(0)*(1. - x(0))+x(1)*(1. - x(1)));
-        //f_out = -1.0*(((2.+12.*x(0)*(x(0) - 1.))*x(1)*x(1)*(1.-x(1))*(1. - x(1)))  + ((2.+12.*x(1)*(x(1) - 1.))*x(0)*x(0)*(1. - x(0))*(1. - x(0))));
+        mfem_error("Function not supported for dim specified2");
 
     }
     
     if (dim == 3)
     {
-        //f_out = 2.0*(x(0)*(1. - x(0)) + x(1)*(1. - x(1)) + x(2)*(1. - x(2)));
-        f_out = 2.0*((x(1)*(1. - x(1))* x(2)*(1. - x(2))) + (x(0)*(1. - x(0))* x(2)*(1. - x(2))) + (x(0)*(1. - x(0))* x(1)*(1. - x(1))));
+        // Define constants
+        double pi = 3.14159265359;
+        double alpha = 1;
+        double beta = 50;
+        // Define exp function argument
+        double phi = -1.0*(beta * (x(0)-0.5)*(x(0)-0.5)) - (beta * (x(1)-0.5)*(x(1)-0.5))  - (beta * (x(2)-0.5)*(x(2)-0.5));
+        // Define C = C_x = C_y
+        double C = 1 + alpha * exp(phi);
+        
+        // Define dC/dx
+        double dC_dx = (-1.0 * beta * alpha) * exp(phi) * (2.0 * x(0) + 1);
+        // Define dC_dy
+        double dC_dy = (-1.0 * beta * alpha) * exp(phi) * (2.0 * x(1) + 1);
+        
+        // Define function u
+        double u = sin(kappa*pi*x(0)) * sin(kappa*pi*x(1)) * sin(kappa*pi*x(2));
+        // Define du_dx
+        double du_dx = (kappa*pi) * cos(kappa*pi*x(0)) * sin(kappa*pi*x(1)) * sin(kappa*pi*x(2));
+        // Define du_dy
+        double du_dy = (kappa*pi) * sin(kappa*pi*x(0)) * cos(kappa*pi*x(1)) * sin(kappa*pi*x(2));
+        // Define du_dz
+        double du_dz = (kappa*pi) * sin(kappa*pi*x(0)) * sin(kappa*pi*x(1)) * cos(kappa*pi*x(2));
+        
+        f_out = -1.0*((C * du_dx) + (C * du_dy) + du_dz);
+
     }
     
     if (dim == 4)
     {
-        f_out = 2.0*((x(1)*(1. - x(1))* x(2)*(1. - x(2)) * x(3)*(1. - x(3))) + (x(0)*(1. - x(0))* x(2)*(1. - x(2)) * x(3)*(1. - x(3))) + (x(0)*(1. - x(0))* x(1)*(1. - x(1)) * x(3)*(1. - x(3))) + (x(0)*(1. - x(0))* x(1)*(1. - x(1)) * x(2)*(1. - x(2))));
+        // Define Constants
+        double pi = 3.14159265359;
+        double alpha = 1.0;
+        double beta = 50.0;
+        
+        // Define exp function argument
+        double phi = -1.0*(beta * (x(0)-0.5)*(x(0)-0.5)) - (beta * (x(1)-0.5)*(x(1)-0.5)) - (beta * (x(2)-0.5)*(x(2)-0.5)) - (beta * (x(3)-0.5)*(x(3)-0.5));
+        // Define C = C_x = C_y = C_z
+        double C = 1 + alpha * exp(phi);
+        
+        // Define dC/dx
+        double dC_dx = (-1.0 * beta * alpha) * exp(phi) * (2.0 * x(0) + 1);
+        // Define dC_dy
+        double dC_dy = (-1.0 * beta * alpha) * exp(phi) * (2.0 * x(1) + 1);
+        // Define dC_dz
+        double dC_dz = (-1.0 * beta * alpha) * exp(phi) * (2.0 * x(2) + 1);
+        
+        // Define function u
+        double u = sin(kappa*pi*x(0)) * sin(kappa*pi*x(1)) * sin(kappa*pi*x(2)) * sin(kappa*pi*x(3));
+        // Define du_dx
+        double du_dx = (kappa*pi) * cos(kappa*pi*x(0)) * sin(kappa*pi*x(1)) * sin(kappa*pi*x(2)) * sin(kappa*pi*x(3));
+        // Define du_dy
+        double du_dy = (kappa*pi) * sin(kappa*pi*x(0)) * cos(kappa*pi*x(1)) * sin(kappa*pi*x(2)) * sin(kappa*pi*x(3));
+        // Define du_dz
+        double du_dz = (kappa*pi) * sin(kappa*pi*x(0)) * sin(kappa*pi*x(1)) * cos(kappa*pi*x(2)) * sin(kappa*pi*x(3));
+        // Define du_dt
+        double du_dt = (kappa*pi) * sin(kappa*pi*x(0)) * sin(kappa*pi*x(1)) * sin(kappa*pi*x(2)) * cos(kappa*pi*x(3));
+
+
+        //f_out = ((u * dC_dx) + (C * du_dx)) + ((u * dC_dy) + (C * du_dy)) + ((u * dC_dz) + (C * du_dz)) + du_dt;
+        f_out = -1.0*((C * du_dx) + (C * du_dy) + (C * du_dz) + du_dt);
+
     }
     
     return f_out;

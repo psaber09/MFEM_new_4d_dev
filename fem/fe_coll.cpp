@@ -2038,7 +2038,9 @@ H1_FECollection::H1_FECollection(const int p, const int dim, const int btype,
              }
              else
              {
-                H1_Elements[Geometry::PENTATOPE] = new H1_PentatopeElement(p, pt_type);
+                //H1_Elements[Geometry::PENTATOPE] = new H1_PentatopeElement(p, pt_type);
+                H1_Elements[Geometry::PENTATOPE] = new H1_PentatopeElement_Barycentric(p, pt_type);
+
              }
           }
       }
@@ -2433,8 +2435,9 @@ L2_FECollection::L2_FECollection(const int p, const int dim, const int btype,
          }
          else
          {
-            L2_Elements[Geometry::PENTATOPE] =
-               new L2_PentatopeElement(p, btype);
+            //L2_Elements[Geometry::PENTATOPE] = new L2_PentatopeElement(p, btype);
+            L2_Elements[Geometry::PENTATOPE] = new L2_PentatopeElement_MMCP(p, btype);
+
          }
          L2_Elements[Geometry::PENTATOPE]->SetMapType(map_type);
          // All trace element use the default Gauss-Legendre nodal points
@@ -2563,7 +2566,9 @@ RT_FECollection::RT_FECollection(const int order, const int dim,
    }
    else if (dim == 4)
    {
-      RT_Elements[Geometry::PENTATOPE] = new RT_PentatopeElement(p);
+      //RT_Elements[Geometry::PENTATOPE] = new RT_PentatopeElement(p);
+      RT_Elements[Geometry::PENTATOPE] = new Hdiv_PentatopeElement(p);
+
       RT_dof[Geometry::PENTATOPE] = p*pp1*(p + 2)*(p + 3)/6;
 
       //TODO: tesseracts

@@ -13,10 +13,14 @@ list(APPEND ALL_EXE_SRCS
   ex0.cpp
   ex1.cpp
   ex1_H1.cpp
+  Advection_exp.cpp
   ex2.cpp
   ex3.cpp
+  ex3_Hdiv.cpp
   ex4.cpp
   ex5.cpp
+  ex5_fixed.cpp
+  ex5_Hdiv_test.cpp
   ex6.cpp
   ex7.cpp
   ex8.cpp

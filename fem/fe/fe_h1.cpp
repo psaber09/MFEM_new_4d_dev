@@ -1481,55 +1481,6 @@ H1_PentatopeElement_Barycentric::H1_PentatopeElement_Barycentric(const int p, co
 
       for (int f=0; f<5; f++)
       {
-          /*
-          // Define each facet
-          if (f==0)
-          {
-              a = 0;
-              b = 1;
-              c = 2;
-              d = 3;
-          }
-          else if(f==1)
-          {
-              // Define Facet
-              a = 0;
-              b = 2;
-              c = 1;
-              d = 4;
-          }
-          // Define each facet
-          else if (f==2)
-          {
-              // Define Facet
-              a = 0;
-              b = 1;
-              c = 3;
-              d = 4;
-          }
-          // Define each facet
-          else if (f==3)
-          {
-              // Define Facet
-              a = 0;
-              b = 3;
-              c = 2;
-              d = 4;
-          }
-          // Define each facet
-          else if (f==4)
-          {
-              // Define Facet
-              a = 1;
-              b = 2;
-              c = 3;
-              d = 4;
-          }
-          else
-          {
-              mfem_error("Invaild facet");
-          }*/
-          
           // Define each facet
           if (f==0)
           {
@@ -1812,54 +1763,6 @@ void H1_PentatopeElement_Barycentric::CalcShape(const IntegrationPoint &ip,
       
     for (int f=0; f<5; f++)
     {
-        /*// Define each facet
-        if (f==0)
-        {
-            a = 0;
-            b = 1;
-            c = 2;
-            d = 3;
-        }
-        else if(f==1)
-        {
-            // Define Facet
-            a = 0;
-            b = 2;
-            c = 1;
-            d = 4;
-        }
-        // Define each facet
-        else if (f==2)
-        {
-            // Define Facet
-            a = 0;
-            b = 1;
-            c = 3;
-            d = 4;
-        }
-        // Define each facet
-        else if (f==3)
-        {
-            // Define Facet
-            a = 0;
-            b = 3;
-            c = 2;
-            d = 4;
-        }
-        // Define each facet
-        else if (f==4)
-        {
-            // Define Facet
-            a = 1;
-            b = 2;
-            c = 3;
-            d = 4;
-        }
-        else
-        {
-            mfem_error("Invaild facet");
-        }*/
-        
         // Define each facet
         if (f==0)
         {
@@ -2494,41 +2397,53 @@ void H1_PentatopeElement_Barycentric::CalcDShape(const IntegrationPoint &ip,
                        // Add Basis Funcitons
                        //std::cout << "o = " << o << std::endl;
                        
-                       double dA = ((Legendre_i[Legendre_i.size()-2] * grad_bary_vectors[1][0] +
-                                  R_i[R_i.size()-2] * (grad_bary_vectors[0][0] +grad_bary_vectors[1][0]))
+                       double dA = ((Legendre_i[Legendre_i.size()-2] * grad_bary_vectors[1][0] + R_i[R_i.size()-2] * (grad_bary_vectors[0][0] + grad_bary_vectors[1][0]))
                                   * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_l.size()-1] * int_Jacobi_m[int_Jacobi_m.size()-1]
+                                    
                        +  int_Legendre_i[int_Legendre_i.size()-1] * (Jacobi_j[Jacobi_j.size()-2] * grad_bary_vectors[2][0] + R_j[R_j.size()-2] * (grad_bary_vectors[0][0] + grad_bary_vectors[1][0] + grad_bary_vectors[2][0])) * int_Jacobi_l[int_Jacobi_l.size()-1] * int_Jacobi_m[int_Jacobi_m.size()-1]
+                                    
                        + int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2] * grad_bary_vectors[3][0] + R_l[R_l.size()-2] * (grad_bary_vectors[0][0] + grad_bary_vectors[1][0] + grad_bary_vectors[2][0] + grad_bary_vectors[3][0])) *  int_Jacobi_m[int_Jacobi_m.size()-1]
-                       + int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_m.size()-1] * (Jacobi_m[Jacobi_m.size()-2] * grad_bary_vectors[4][0]));
+                                    
+                       + int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_l.size()-1] * (Jacobi_m[Jacobi_m.size()-2] * grad_bary_vectors[4][0]));
+                       
                        du(o, 0) = dA;
                        //std::cout << "dA = " << dA << std::endl;
                        
-                       double dB = ((Legendre_i[Legendre_i.size()-2] * grad_bary_vectors[1][1] +
-                                  R_i[R_i.size()-2] * (grad_bary_vectors[0][1] +grad_bary_vectors[1][1]))
+                       double dB = ((Legendre_i[Legendre_i.size()-2] * grad_bary_vectors[1][1] + R_i[R_i.size()-2] * (grad_bary_vectors[0][1] +grad_bary_vectors[1][1]))
                                   * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_l.size()-1] * int_Jacobi_m[int_Jacobi_m.size()-1]
+                                    
                        +  int_Legendre_i[int_Legendre_i.size()-1] * (Jacobi_j[Jacobi_j.size()-2] * grad_bary_vectors[2][1] + R_j[R_j.size()-2] * (grad_bary_vectors[0][1] + grad_bary_vectors[1][1] + grad_bary_vectors[2][1])) * int_Jacobi_l[int_Jacobi_l.size()-1] * int_Jacobi_m[int_Jacobi_m.size()-1]
+                                    
                        + int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2] * grad_bary_vectors[3][1] + R_l[R_l.size()-2] * (grad_bary_vectors[0][1] + grad_bary_vectors[1][1] + grad_bary_vectors[2][1] + grad_bary_vectors[3][1])) *  int_Jacobi_m[int_Jacobi_m.size()-1]
-                       + int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_m.size()-1] * (Jacobi_m[Jacobi_m.size()-2] * grad_bary_vectors[4][1]));
+                                    
+                       + int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_l.size()-1] * (Jacobi_m[Jacobi_m.size()-2] * grad_bary_vectors[4][1]));
+                       
                        du(o, 1) = dB;
                        //std::cout << "dB = " << dB << std::endl;
 
                        
-                       double dC = ((Legendre_i[Legendre_i.size()-2] * grad_bary_vectors[1][2] +
-                                  R_i[R_i.size()-2] * (grad_bary_vectors[0][2] +grad_bary_vectors[1][2]))
+                       double dC = ((Legendre_i[Legendre_i.size()-2] * grad_bary_vectors[1][2] + R_i[R_i.size()-2] * (grad_bary_vectors[0][2] +grad_bary_vectors[1][2]))
                                   * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_l.size()-1] * int_Jacobi_m[int_Jacobi_m.size()-1]
+                                    
                        +  int_Legendre_i[int_Legendre_i.size()-1] * (Jacobi_j[Jacobi_j.size()-2] * grad_bary_vectors[2][2] + R_j[R_j.size()-2] * (grad_bary_vectors[0][2] + grad_bary_vectors[1][2] + grad_bary_vectors[2][2])) * int_Jacobi_l[int_Jacobi_l.size()-1] * int_Jacobi_m[int_Jacobi_m.size()-1]
+                                    
                        + int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2] * grad_bary_vectors[3][2] + R_l[R_l.size()-2] * (grad_bary_vectors[0][2] + grad_bary_vectors[1][2] + grad_bary_vectors[2][2] + grad_bary_vectors[3][2])) *  int_Jacobi_m[int_Jacobi_m.size()-1]
-                       + int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_m.size()-1] * (Jacobi_m[Jacobi_m.size()-2] * grad_bary_vectors[4][2]));
+                                    
+                       + int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_l.size()-1] * (Jacobi_m[Jacobi_m.size()-2] * grad_bary_vectors[4][2]));
+                       
                        du(o, 2) = dC;
                        //std::cout << "dC = " << dC << std::endl;
 
                        
-                       double dD = ((Legendre_i[Legendre_i.size()-2] * grad_bary_vectors[1][3] +
-                                  R_i[R_i.size()-2] * (grad_bary_vectors[0][3] +grad_bary_vectors[1][3]))
+                       double dD = ((Legendre_i[Legendre_i.size()-2] * grad_bary_vectors[1][3] + R_i[R_i.size()-2] * (grad_bary_vectors[0][3] +grad_bary_vectors[1][3]))
                                   * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_l.size()-1] * int_Jacobi_m[int_Jacobi_m.size()-1]
+                                    
                        +  int_Legendre_i[int_Legendre_i.size()-1] * (Jacobi_j[Jacobi_j.size()-2] * grad_bary_vectors[2][3] + R_j[R_j.size()-2] * (grad_bary_vectors[0][3] + grad_bary_vectors[1][3] + grad_bary_vectors[2][3])) * int_Jacobi_l[int_Jacobi_l.size()-1] * int_Jacobi_m[int_Jacobi_m.size()-1]
+                                    
                        + int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2] * grad_bary_vectors[3][3] + R_l[R_l.size()-2] * (grad_bary_vectors[0][3] + grad_bary_vectors[1][3] + grad_bary_vectors[2][3] + grad_bary_vectors[3][3])) *  int_Jacobi_m[int_Jacobi_m.size()-1]
-                       + int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_m.size()-1] * (Jacobi_m[Jacobi_m.size()-2] * grad_bary_vectors[4][3]));
+                                    
+                       + int_Legendre_i[int_Legendre_i.size()-1] * int_Jacobi_j[int_Jacobi_j.size()-1] * int_Jacobi_l[int_Jacobi_l.size()-1] * (Jacobi_m[Jacobi_m.size()-2] * grad_bary_vectors[4][3]));
+                       
                        du(o, 3) = dD;
                        //std::cout << "dD = " << dD << std::endl;
 

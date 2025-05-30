@@ -94,6 +94,10 @@ public:
    { x = x1; y = x2; z = x3; t = x4; }
 
    void Set3w(const real_t *p) { x = p[0]; y = p[1]; z = p[2]; weight = p[3]; }
+    
+   void Set3w(const double x1, const double x2, const double x3,
+               const double w)
+    { x = x1; y = x2; z = x3; weight = w; }
 
    void Set3(const real_t x1, const real_t x2, const real_t x3)
    { x = x1; y = x2; z = x3; }
@@ -191,6 +195,11 @@ private:
       IntPoint(off + 4).Set(c, a, b, weight);
       IntPoint(off + 5).Set(c, b, a, weight);
    }
+    
+    void AddTetPoint(const int off, const double x, const double y, const double z, double weight)
+    {
+       IntPoint(off).Set3w(x, y, z, weight);
+    }
 
    void AddTetMidPoint(const int off, const real_t weight)
    { IntPoint(off).Set(0.25, 0.25, 0.25, weight); }

@@ -45,10 +45,13 @@ using namespace mfem;
 
 // Define the analytical solution and forcing terms / boundary conditions
 void uFun_ex(const Vector & x, Vector & u);
-real_t pFun_ex(const Vector & x);
+double pFun_ex(const Vector & x);
 void fFun(const Vector & x, Vector & f);
-real_t gFun(const Vector & x);
-real_t f_natural(const Vector & x);
+double gFun(const Vector & x);
+double f_natural(const Vector & x);
+real_t sigma = 0.0;
+real_t kappa = -1.0;
+int dim;
 
 int main(int argc, char *argv[])
 {
@@ -57,10 +60,10 @@ int main(int argc, char *argv[])
    // 1. Parse command-line options.
    const char *mesh_file = "../data/star.mesh";
    int order = 1;
-   int ref_levels =  0;
    bool pa = false;
    const char *device_config = "cpu";
    bool visualization = 1;
+   int ref_levels = 0;
 
    OptionsParser args(argc, argv);
    args.AddOption(&mesh_file, "-m", "--mesh",
@@ -74,8 +77,8 @@ int main(int argc, char *argv[])
    args.AddOption(&visualization, "-vis", "--visualization", "-no-vis",
                   "--no-visualization",
                   "Enable or disable GLVis visualization.");
-    args.AddOption(&ref_levels, "-ref", "--ref-levels", "");
-    
+   args.AddOption(&ref_levels, "-ref", "--ref-levels", "");
+
    args.Parse();
    if (!args.Good())
    {
@@ -93,13 +96,14 @@ int main(int argc, char *argv[])
    //    quadrilateral, tetrahedral, hexahedral, surface and volume meshes with
    //    the same code.
    Mesh *mesh = new Mesh(mesh_file, 1, 1);
-   int dim = mesh->Dimension();
+   dim = mesh->Dimension();
 
    // 4. Refine the mesh to increase the resolution. In this example we do
    //    'ref_levels' of uniform refinement. We choose 'ref_levels' to be the
    //    largest number that gives a final mesh with no more than 10,000
    //    elements.
    {
+      //int ref_levels =
          //(int)floor(log(10000./mesh->GetNE())/log(2.)/dim);
       for (int l = 0; l < ref_levels; l++)
       {
@@ -129,7 +133,29 @@ int main(int argc, char *argv[])
    std::cout << "dim(W) = " << block_offsets[2] - block_offsets[1] << "\n";
    std::cout << "dim(R+W) = " << block_offsets.Last() << "\n";
    std::cout << "***********************************************************\n";
+    {
+       Array<int> ess_tdof_list;
+       if (mesh->bdr_attributes.Size())
+       {
+          Array<int> ess_bdr(mesh->bdr_attributes.Max());
+          ess_bdr = 1;
+          R_space->GetEssentialTrueDofs(ess_bdr, ess_tdof_list);
+       }
+       cout << "Number boundary dofs in H(div): "
+            << ess_tdof_list.Size() << endl;
+    }
 
+    {
+       Array<int> ess_tdof_list;
+       if (mesh->bdr_attributes.Size())
+       {
+          Array<int> ess_bdr(mesh->bdr_attributes.Max());
+          ess_bdr = 1;
+          W_space->GetEssentialTrueDofs(ess_bdr, ess_tdof_list);
+       }
+       cout << "Number boundary dofs in L2: "
+            << ess_tdof_list.Size() << endl;
+    }
    // 7. Define the coefficients, analytical solution, and rhs of the PDE.
    ConstantCoefficient k(1.0);
 
@@ -154,10 +180,15 @@ int main(int argc, char *argv[])
    fform->AddBoundaryIntegrator(new VectorFEBoundaryFluxLFIntegrator(fnatcoeff));
    fform->Assemble();
    fform->SyncAliasMemory(rhs);
-
+    
+   ConstantCoefficient one(1.0);
+   ConstantCoefficient zero(0.0);
+    
    LinearForm *gform(new LinearForm);
    gform->Update(W_space, rhs.GetBlock(1), 0);
    gform->AddDomainIntegrator(new DomainLFIntegrator(gcoeff));
+   //gform->AddBdrFaceIntegrator(
+          //new DGDirichletLFIntegrator(-gcoeff, one, sigma, kappa));
    gform->Assemble();
    gform->SyncAliasMemory(rhs);
 
@@ -271,9 +302,9 @@ int main(int argc, char *argv[])
 
    // 11. Solve the linear system with MINRES.
    //     Check the norm of the unpreconditioned residual.
-   int maxIter(1000);
-   real_t rtol(1.e-12);
-   real_t atol(1.e-14);
+   int maxIter(50000);
+   double rtol(1.e-12);
+   double atol(1.e-14);
 
    chrono.Clear();
    chrono.Start();
@@ -290,18 +321,12 @@ int main(int argc, char *argv[])
    chrono.Stop();
 
    if (solver.GetConverged())
-   {
       std::cout << "MINRES converged in " << solver.GetNumIterations()
-                << " iterations with a residual norm of "
-                << solver.GetFinalNorm() << ".\n";
-   }
+                << " iterations with a residual norm of " << solver.GetFinalNorm() << ".\n";
    else
-   {
       std::cout << "MINRES did not converge in " << solver.GetNumIterations()
-                << " iterations. Residual norm is " << solver.GetFinalNorm()
-                << ".\n";
-   }
-   std::cout << "MINRES solver took " << chrono.RealTime() << "s.\n";
+                << " iterations. Residual norm is " << solver.GetFinalNorm() << ".\n";
+   std::cout << "MINRES solver took " << chrono.RealTime() << "s. \n";
 
    // 12. Create the grid functions u and p. Compute the L2 error norms.
    GridFunction u, p;
@@ -312,16 +337,20 @@ int main(int argc, char *argv[])
    const IntegrationRule *irs[Geometry::NumGeom];
    for (int i=0; i < Geometry::NumGeom; ++i)
    {
-      irs[i] = &(IntRules.Get(i, order_quad));
+      irs[i] = &(IntRules.Get(i, 16));
    }
 
-   real_t err_u  = u.ComputeL2Error(ucoeff, irs);
-   real_t norm_u = ComputeLpNorm(2., ucoeff, *mesh, irs);
-   real_t err_p  = p.ComputeL2Error(pcoeff, irs);
-   real_t norm_p = ComputeLpNorm(2., pcoeff, *mesh, irs);
+   double err_u  = u.ComputeL2Error(ucoeff, irs);
+   //double norm_u = ComputeLpNorm(2., ucoeff, *mesh, irs);
+   double err_p  = p.ComputeL2Error(pcoeff, irs);
+   //double norm_p = ComputeLpNorm(2., pcoeff, *mesh, irs);
 
-   std::cout << "|| u_h - u_ex || / || u_ex || = " << err_u / norm_u << "\n";
-   std::cout << "|| p_h - p_ex || / || p_ex || = " << err_p / norm_p << "\n";
+   //std::cout << "|| u_h - u_ex || / || u_ex || = " << err_u / norm_u << "\n";
+   //std::cout << "|| p_h - p_ex || / || p_ex || = " << err_p / norm_p << "\n";
+   cout << "\n|| u_h - u ||_{L^2} = " << err_u << '\n' << endl;
+   cout << "\n|| p_h - p ||_{L^2} = " << err_p << '\n' << endl;
+
+
 
    // 13. Save the mesh and the solution. This output can be viewed later using
    //     GLVis: "glvis -m ex5.mesh -g sol_u.gf" or "glvis -m ex5.mesh -g
@@ -393,36 +422,37 @@ int main(int argc, char *argv[])
 
 void uFun_ex(const Vector & x, Vector & u)
 {
-   real_t xi(x(0));
-   real_t yi(x(1));
-   real_t zi(0.0);
-   if (x.Size() == 3)
+    
+   if (dim == 3)
    {
-      zi = x(2);
+       u(0) = - exp(x(0))*sin(x(1))*cos(x(2));
+       u(1) = - exp(x(0))*cos(x(1))*cos(x(2));
+       u(2) = exp(x(0))*sin(x(1))*sin(x(2));
+   }
+   if (dim == 4)
+   {
+       u(0) = -(exp(x(0))*(sin(x(1))*cos(x(2)) + sin(x(1))*cos(x(3)) + sin(x(2))*cos(x(3))));
+       u(1) = -(exp(x(0))*(cos(x(1))*cos(x(2)) + cos(x(1))*cos(x(3))));
+       u(2) = -(exp(x(0))*(-sin(x(1))*sin(x(2)) + cos(x(2))*cos(x(3))));
+       u(3) = -(exp(x(0))*(-sin(x(1))*sin(x(3)) - sin(x(2))*sin(x(3))));
+
    }
 
-   u(0) = - exp(xi)*sin(yi)*cos(zi);
-   u(1) = - exp(xi)*cos(yi)*cos(zi);
-
-   if (x.Size() == 3)
-   {
-      u(2) = exp(xi)*sin(yi)*sin(zi);
-   }
 }
 
 // Change if needed
-real_t pFun_ex(const Vector & x)
+double pFun_ex(const Vector & x)
 {
-   real_t xi(x(0));
-   real_t yi(x(1));
-   real_t zi(0.0);
 
-   if (x.Size() == 3)
+
+   if (dim == 3)
    {
-      zi = x(2);
+       return exp(x(0))*sin(x(1))*cos(x(2));
    }
-
-   return exp(xi)*sin(yi)*cos(zi);
+    if (dim == 4)
+    {
+        return exp(x(0))*(sin(x(1))*cos(x(2)) + sin(x(1))*cos(x(3)) + sin(x(2))*cos(x(3)));
+    }
 }
 
 void fFun(const Vector & x, Vector & f)
@@ -430,19 +460,20 @@ void fFun(const Vector & x, Vector & f)
    f = 0.0;
 }
 
-real_t gFun(const Vector & x)
+double gFun(const Vector & x)
 {
    if (x.Size() == 3)
    {
       return -pFun_ex(x);
    }
-   else
+   if (dim == 4)
    {
-      return 0;
+      return -pFun_ex(x);
    }
 }
 
-real_t f_natural(const Vector & x)
+
+double f_natural(const Vector & x)
 {
    return (-pFun_ex(x));
 }

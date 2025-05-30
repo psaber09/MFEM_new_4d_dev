@@ -3072,7 +3072,7 @@ void Mesh::MarkForRefinement()
       else if (Dim == 4)
       {
           MFEM_WARNING("Refinement not supported for 4D");
-          MakeReflectedPentMesh();
+          //MakeReflectedPentMesh();
       }
    }
 }
@@ -5555,6 +5555,8 @@ void Mesh::SetMeshGen()
             mesh_geoms |= (1 << Geometry::TETRAHEDRON);
          case Element::TRIANGLE:
             mesh_geoms |= (1 << Geometry::TRIANGLE);
+         case Element::QUADRILATERAL:
+            mesh_geoms |= (1 << Geometry::SQUARE);
          case Element::SEGMENT:
             mesh_geoms |= (1 << Geometry::SEGMENT);
          case Element::POINT:
