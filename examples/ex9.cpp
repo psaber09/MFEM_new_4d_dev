@@ -144,17 +144,17 @@ public:
 int main(int argc, char *argv[])
 {
    // 1. Parse command-line options.
-   problem = 0;
-   const char *mesh_file = "../data/periodic-hexagon.mesh";
-   int ref_levels = 2;
-   int order = 3;
+   problem = 4;
+   const char *mesh_file = "../data/periodic-square.mesh";
+   int ref_levels = 0;
+   int order = 2;
    bool pa = false;
    bool ea = false;
    bool fa = false;
    const char *device_config = "cpu";
    int ode_solver_type = 4;
-   real_t t_final = 10.0;
-   real_t dt = 0.01;
+   real_t t_final = 2.0;
+   real_t dt = 0.00001;
    bool visualization = true;
    bool visit = false;
    bool paraview = false;
@@ -216,6 +216,7 @@ int main(int argc, char *argv[])
    //    periodic meshes in this code.
    Mesh mesh(mesh_file, 1, 1);
    int dim = mesh.Dimension();
+    std::cout << "Dim = " << dim << std::endl;
 
    // 3. Define the ODE solver used for time integration. Several explicit
    //    Runge-Kutta methods are available.
@@ -412,6 +413,23 @@ int main(int argc, char *argv[])
       osol.precision(precision);
       u.Save(osol);
    }
+    
+    // Compute and print the L^2 norm of the error.
+//    const IntegrationRule* irs[Geometry::NumGeom];
+//    for (int i = 0; i < Geometry::NumGeom; i++)
+//    {
+//        if (i == 4)
+//        {
+//            // Tet Int Rule
+//            irs[i] = &(IntRules.Get(i, 10));
+//        }else
+//        {
+//            // Everything else
+//            irs[i] = &(IntRules.Get(i, 16));
+//        }
+//    }
+    cout << "Number of unknowns: " << fes.GetVSize() << endl;
+    cout << "\n|| u_h - u ||_{L^2} = " << u.ComputeL2Error(u0) << '\n' << endl;
 
    // 10. Free the used memory.
    delete pd;
@@ -525,6 +543,15 @@ void velocity_function(const Vector &x, Vector &v)
          }
          break;
       }
+      case 4:
+      {
+           if (dim == 2)
+           {
+               v(0) = 1.0;
+               v(1) = 0.0;
+               break;
+           }
+      }
    }
 }
 
@@ -576,6 +603,14 @@ real_t u0_function(const Vector &x)
       {
          const real_t f = M_PI;
          return sin(f*X(0))*sin(f*X(1));
+      }
+      case 4:
+      {
+           if (dim == 2)
+           {
+               const real_t f = M_PI;
+               return sin(f*X(0))*sin(f*X(1));
+           }
       }
    }
    return 0.0;

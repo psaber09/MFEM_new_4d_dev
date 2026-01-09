@@ -278,6 +278,7 @@ template <> struct Geometry::Constants<Geometry::PENTATOPE>
    static const int MaxFaceVert = 4;
    static const int FaceVert[NumFaces][MaxFaceVert];
    static const int NumPlanar = 10;
+   static const int PlanarTypes[NumPlanar];
    static const int MaxPlanarVert = 3;
    static const int PlanarVert[NumPlanar][MaxPlanarVert];
    // Lower-triangular part of the local vertex-to-vertex graph.

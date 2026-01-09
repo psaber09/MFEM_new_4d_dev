@@ -1269,11 +1269,19 @@ IntegrationRule *IntegrationRules::TriangleIntegrationRule(int Order)
    switch (Order)
    {
       case 0:  // 1 point - degree 1
+         std::cout << "Specical Hard code Int Rule" << std::endl;
+         ir = new IntegrationRule(1);
+         ir->AddTriPoint(0, 0.5);
+         ir->SetOrder(0);
+         TriangleIntRules[0] = ir;
+         return ir;
       case 1:
+           std::cout << "do not want to be here" << std::endl;
          ir = new IntegrationRule(1);
          ir->AddTriMidPoint(0, 0.5);
          ir->SetOrder(1);
-         TriangleIntRules[0] = TriangleIntRules[1] = ir;
+         TriangleIntRules[1] = ir;
+         //TriangleIntRules[0] = TriangleIntRules[1] = ir;
          return ir;
 
       case 2:  // 3 point - 2 degree

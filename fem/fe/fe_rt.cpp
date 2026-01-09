@@ -14,6 +14,8 @@
 #include "fe_rt.hpp"
 #include "face_map_utils.hpp"
 #include "../coefficient.hpp"
+#include <fstream>
+
 
 namespace mfem
 {
@@ -852,6 +854,17 @@ void RT_TriangleElement::CalcVShape(const IntegrationPoint &ip,
    }
 
    Ti.Mult(u, shape);
+    
+    std::cout << std::endl;
+    for (int i =0; i<dof; i++)
+    {
+        for (int j = 0; j<dim; j++)
+        {
+            std::cout << shape(i,j) << ",";
+        }
+                   std::cout << std::endl;
+    }
+    std::cout << "end" << std::endl;
 }
 
 void RT_TriangleElement::CalcDivShape(const IntegrationPoint &ip,
@@ -1032,6 +1045,17 @@ void RT_TetrahedronElement::CalcVShape(const IntegrationPoint &ip,
       }
 
    Ti.Mult(u, shape);
+    
+    std::cout << std::endl;
+    for (int i =0; i<dof; i++)
+    {
+        for (int j = 0; j<dim; j++)
+        {
+            std::cout << shape(i,j) << ",";
+        }
+                   std::cout << std::endl;
+    }
+    std::cout << "end" << std::endl;
 }
 
 void RT_TetrahedronElement::CalcDivShape(const IntegrationPoint &ip,
@@ -1445,7 +1469,7 @@ Hdiv_PentatopeElement::Hdiv_PentatopeElement(const int p)
    for (int q = 0; q < dof; q++)
    {
        const IntegrationPoint &ip = Nodes.IntPoint(q);
-       //std::cout << "Dof" << q << " = " << ip.x << ", " << ip.y << ", " << ip.z << ", " << ip.t << std::endl;
+       std::cout << "Dof" << q << " = " << ip.x << ", " << ip.y << ", " << ip.z << ", " << ip.t << std::endl;
 
        //const double *nm = nk + 4*dof2nk[m];
        
@@ -1655,6 +1679,12 @@ Hdiv_PentatopeElement::Hdiv_PentatopeElement(const int p)
            
        }//end of Facets
        
+//       std::cout << "Inital compute" << std::endl;
+//       for (int row = 0; row<11; row++)
+//       {
+//           std::cout << B(row,0) << "," << B(row,1) << "," << B(row,2) << "," << B(row,3) << std::endl;
+//       }
+       
               
        //Interiors
        for (int r = 0; r<4; r++)
@@ -1816,7 +1846,7 @@ Hdiv_PentatopeElement::Hdiv_PentatopeElement(const int p)
 
    }
 
-//   std::ofstream Vander_file("Vander_matrix_Fuentes.txt");
+//   std::ofstream Vander_file("Vander_matrix_Hdiv.txt");
 //   T.PrintMatlab(Vander_file);
 //
 //   std::ofstream basis_file("Basis_matrix.txt");
@@ -1827,7 +1857,7 @@ Hdiv_PentatopeElement::Hdiv_PentatopeElement(const int p)
 
    Ti.Factor(T);
     
-//   std::ofstream VanderInv_file("VanderInv_matrix.txt");
+//   std::ofstream VanderInv_file("VanderInv_matrix_Hdiv.txt");
 //   Ti.PrintMatlab(VanderInv_file);
 
    mfem::out << "RT_PentatopeElement(" << p << ") : "; Ti.TestInversion();
@@ -1850,6 +1880,7 @@ void Hdiv_PentatopeElement::CalcVShape(const IntegrationPoint &ip,
     //ofstream logfile("logfile_shape.txt", std::ios_base::app);
     //compute barycentric coordinates as function of ip
     std::vector<double> bary_vector{ip.x, ip.y, ip.z, ip.t, (1.0 - ip.x - ip.y - ip.z - ip.t)};
+    //std::cout << "Dof = " << ip.x << ", " << ip.y << ", " << ip.z << ", " << ip.t << std::endl;
 
     // compute the gradient of the barycentric coords
     std::vector<double> gradL1{1,0,0,0};
@@ -2180,6 +2211,16 @@ void Hdiv_PentatopeElement::CalcVShape(const IntegrationPoint &ip,
 
 
    Ti.Mult(u, shape);
+//    std::cout << std::endl;
+//    for (int i =0; i<dof; i++) 
+//    {
+//        for (int j = 0; j<dim; j++)
+//        {
+//            std::cout << shape(i,j) << ",";
+//        }
+//                   std::cout << std::endl;
+//    }
+//    std::cout << "end" << std::endl;
     
 //   std::ofstream shape_file("shape_matrix_Fuentes.txt");
 //   shape.PrintMatlab(shape_file);

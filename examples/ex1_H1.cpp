@@ -240,9 +240,9 @@ int main(int argc, char *argv[])
    a->FormLinearSystem(ess_tdof_list, x, *b, A, X, B); // x = x_ess + X
    // A*X = f - A*x_ess = B
 
-    //std::ofstream A_file("A_matrix.txt");
+    std::ofstream A_file("A_matrix.txt");
 
-    // A->PrintMatlab(A_file);
+    A->PrintMatlab(A_file);
 
 
    cout << "Size of linear system: " << A->Height() << endl;
@@ -368,18 +368,21 @@ double Q_exact(const Vector &x)
 
     if (dim == 2)
     {
-        Q_out = x(0)*x(1);
+        //Q_out = x(0)*x(1);
+        Q_out = 1.0;
     }
     
     if (dim == 3)
     {
-        Q_out = x(0)*(1. - x(0)) * x(1)*(1. - x(1)) * x(2)*(1. - x(2));
+        //Q_out = x(0)*(1. - x(0)) * x(1)*(1. - x(1)) * x(2)*(1. - x(2));
         //Q_out = x(0)*x(1)*x(2)*x(0)*x(1)*x(2)*x(0);
+        Q_out = 1.0;
     }
     
     if (dim == 4)
     {
-        Q_out = x(0)*x(1)*x(2)*x(3)*x(0)*x(1)*x(2);
+        //Q_out = x(0)*x(1)*x(2)*x(3)*x(0)*x(1)*x(2);
+        Q_out = 1.0;
         
         //Q_out = x(0)*(1. - x(0)) * x(1)*(1. - x(1)) * x(2)*(1. - x(2)) * x(3)*(1. - x(3));
         

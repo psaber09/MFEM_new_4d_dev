@@ -14,6 +14,7 @@
 #include "fe_nd.hpp"
 #include "face_map_utils.hpp"
 #include "../coefficient.hpp"
+#include <fstream>
 
 namespace mfem
 {
@@ -986,7 +987,8 @@ ND_TetrahedronElement::ND_TetrahedronElement(const int p)
             shape_y(pm1-k)*shape_z(k)*((ip.z - c)*tm[1] - (ip.y - c)*tm[2]);
       }
    }
-
+//   std::ofstream T_file("Vander_matrix_ND_3D.txt");
+//   T.PrintMatlab(T_file);
    Ti.Factor(T);
    // mfem::out << "ND_TetrahedronElement(" << p << ") : "; Ti.TestInversion();
 }
@@ -1031,6 +1033,16 @@ void ND_TetrahedronElement::CalcVShape(const IntegrationPoint &ip,
    }
 
    Ti.Mult(u, shape);
+//    std::cout << std::endl;
+//    for (int i =0; i<dof; i++)
+//    {
+//        for (int j = 0; j<dim; j++)
+//        {
+//            std::cout << shape(i,j) << ",";
+//        }
+//                   std::cout << std::endl;
+//    }
+//    std::cout << "end" << std::endl;
 }
 
 void ND_TetrahedronElement::CalcCurlShape(const IntegrationPoint &ip,
@@ -1190,6 +1202,8 @@ void ND_TriangleElement::CalcVShape(const IntegrationPoint &ip,
                                     DenseMatrix &shape) const
 {
    const int pm1 = order - 1;
+   std::cout << "Int Point = " << ip.x << ", " << ip.y << std::endl;
+
 
 #ifdef MFEM_THREAD_SAFE
    const int p = order;
@@ -1218,6 +1232,17 @@ void ND_TriangleElement::CalcVShape(const IntegrationPoint &ip,
    }
 
    Ti.Mult(u, shape);
+    
+    std::cout << std::endl;
+    for (int i =0; i<dof; i++)
+    {
+        for (int j = 0; j<dim; j++)
+        {
+            std::cout << shape(i,j) << ",";
+        }
+                   std::cout << std::endl;
+    }
+    std::cout << "end" << std::endl;
 }
 
 void ND_TriangleElement::CalcCurlShape(const IntegrationPoint &ip,
@@ -1779,6 +1804,8 @@ ND_FuentesPyramidElement::ND_FuentesPyramidElement(const int p,
       const Vector tm({tk[3*dof2tk[m]], tk[3*dof2tk[m]+1], tk[3*dof2tk[m]+2]});
       u.Mult(tm, T.GetColumn(m));
    }
+    std::ofstream T_file("Pyrimid_Vander_matrix.txt");
+    T.PrintMatlab(T_file);
 
    Ti.Factor(T);
 }

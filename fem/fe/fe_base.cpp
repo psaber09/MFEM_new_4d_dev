@@ -55,6 +55,13 @@ void FiniteElement::CalcDivShape(
    MFEM_ABORT("method is not implemented for this class");
 }
 
+void FiniteElement::CalcDivSkewShape(const IntegrationPoint &ip,
+                                     DenseMatrix &curl_shape) const
+{
+   mfem_error ("FiniteElement::CalcDivSkewShape (ip, ...)\n"
+               "   is not implemented for this class!");
+}
+
 void FiniteElement::CalcPhysDivShape(
    ElementTransformation &Trans, Vector &div_shape) const
 {
@@ -64,6 +71,12 @@ void FiniteElement::CalcPhysDivShape(
 
 void FiniteElement::CalcCurlShape(const IntegrationPoint &ip,
                                   DenseMatrix &curl_shape) const
+{
+   MFEM_ABORT("method is not implemented for this class");
+}
+
+void FiniteElement::CalcSkwGradShape(const IntegrationPoint &ip,
+                                  DenseMatrix &SkwGrad_shape) const
 {
    MFEM_ABORT("method is not implemented for this class");
 }
@@ -1003,6 +1016,7 @@ VectorFiniteElement::VectorFiniteElement(int D, Geometry::Type G,
    {
       cdim = (dim == 3) ? 3 : 1;
    }
+    int test = 0;
 }
 
 void VectorFiniteElement::CalcShape(
@@ -1023,19 +1037,28 @@ void VectorFiniteElement::SetDerivMembers()
 {
    switch (map_type)
    {
+      case H_SkwGrad:
+         deriv_type = SkwGrad;
+         deriv_range_type = MAT_SKEW;
+         deriv_map_type = INTEGRAL;
       case H_DIV:
          deriv_type = DIV;
          deriv_range_type = SCALAR;
          deriv_map_type = INTEGRAL;
          break;
+     case H_DIV_SKEW:
+         deriv_type = H_DIV_SKEW;
+         deriv_range_type = VECTOR;
+         deriv_map_type = H_DIV;
+         break;
       case H_CURL:
          switch (dim)
          {
             case 4: // curl: 4D H_CURL -> 4D H_DIV(skew)
-//               deriv_type = CURL;
-//               deriv_range_type = MAT_SKEW;
-//               deriv_map_type = H_DIV_SKEW;
-                 mfem_error("Error: 4D H-curl deriv map not support yet!");
+               deriv_type = CURL;
+               deriv_range_type = MAT_SKEW;
+               deriv_map_type = H_SkwGrad;  // was equal = H_DIV_SKEW;
+                 //mfem_error("Error: 4D H-curl deriv map not support yet!");
                break;
             case 3: // curl: 3D H_CURL -> 3D H_DIV
                deriv_type = CURL;
@@ -1083,6 +1106,74 @@ void VectorFiniteElement::CalcVShape_ND(
 #endif
    CalcVShape(Trans.GetIntPoint(), vshape);
    Mult(vshape, Trans.InverseJacobian(), shape);
+}
+
+void VectorFiniteElement::CalcVShape_DivSkew (
+   ElementTransformation &Trans, DenseMatrix &shape) const
+{
+   if (dim!=4) { return; }
+
+   MFEM_ASSERT(map_type == H_DIV_SKEW, "");
+   const DenseMatrix &J = Trans.Jacobian();
+   DenseMatrix Jinv; // Add By MMCP
+#ifdef MFEM_THREAD_SAFE
+   DenseMatrix vshape(dof, dim*dim);
+   DenseMatrix Jinv(J.Width(), J.Height());
+#else
+   Jinv.SetSize(J.Width(), J.Height());
+#endif
+
+   if (vshape.Width()!=dim*dim) { vshape.SetSize(dof,dim*dim); }
+
+   CalcVShape(Trans.GetIntPoint(), vshape);
+
+   CalcInverse(J, Jinv);
+   DenseMatrix invJtr(Jinv); invJtr.Transpose();
+
+   CalcVShape(Trans.GetIntPoint(), vshape);
+
+   DenseMatrix mat(dim,dim); mat = 0.0;
+   DenseMatrix tempMat(dim,dim);
+
+   for (int o=0; o<dof; o++)
+   {
+      //    for(int ik=0; ik<dim; ik++)
+      //       for(int jk=0; jk<dim; jk++)
+      //       {
+      //          mat(ik,jk) = vshape(o,dim*ik+jk);
+      //       }
+      //
+      //    Mult(mat, Jinv, tempMat);
+      //    Mult(invJtr, tempMat, mat);
+      //
+      //    for(int ik=0; ik<dim; ik++)
+      //       for(int jk=0; jk<dim; jk++)
+      //       {
+      //          shape(o,dim*ik+jk) = mat(ik,jk);
+      //       }
+
+
+      mat(0,0) =  0.0;            mat(0,1) =  vshape(o,11);
+      mat(0,2) =  vshape(o,13); mat(0,3) =  vshape(o,6);
+      mat(1,0) =  vshape(o,14); mat(1,1) =  0.0;
+      mat(1,2) =  vshape(o,3);  mat(1,3) =  vshape(o,8);
+      mat(2,0) =  vshape(o,7);  mat(2,1) =  vshape(o,12); mat(2,2) =  0.0;
+      mat(2,3) =  vshape(o,1);
+      mat(3,0) =  vshape(o,9);  mat(3,1) =  vshape(o,2);
+      mat(3,2) =  vshape(o,4);  mat(3,3) =  0.0;
+
+      Mult(mat, Jinv, tempMat);
+      Mult(invJtr, tempMat, mat);
+
+      shape(o,0) =  0.0;      shape(o,1) =  mat(2,3); shape(o,2) =  mat(3,1);
+      shape(o,3) =  mat(1,2);
+      shape(o,4) =  mat(3,2); shape(o,5) =  0.0;      shape(o,6) =  mat(0,3);
+      shape(o,7) =  mat(2,0);
+      shape(o,8) =  mat(1,3); shape(o,9) =  mat(3,0); shape(o,10) = 0.0;
+      shape(o,11) = mat(0,1);
+      shape(o,12) = mat(2,1); shape(o,13) = mat(0,2); shape(o,14) = mat(1,0);
+      shape(o,15) = 0.0;
+   }
 }
 
 void VectorFiniteElement::Project_RT(

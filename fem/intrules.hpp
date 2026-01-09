@@ -130,7 +130,10 @@ private:
 
    /// Define n-simplex rule (triangle/tetrahedron for n=2/3) of order (2s+1)
    void GrundmannMollerSimplexRule(int s, int n = 3);
-
+    
+   void AddTriPoint(const int off, const real_t weight)
+   { IntPoint(off).Set2w(1./2., 1./2., weight); }
+    
    void AddTriMidPoint(const int off, const real_t weight)
    { IntPoint(off).Set2w(1./3., 1./3., weight); }
 
@@ -248,7 +251,7 @@ private:
    }
     
     void AddPentMidPoint(const int off, const double weight)
-   { IntPoint(off).Set4w(0.2, 0.2, 0.2, 0.2, weight); }
+   { IntPoint(off).Set4w(0.25, 0.25, 0.25, 0.25, weight); }
 
    void AddPentPoint(const int off, const double x, const double y, const double z,
                      const double t, double weight)

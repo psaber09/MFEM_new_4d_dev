@@ -74,6 +74,8 @@ set(SRCS
   fe/fe_h1.cpp
   fe/fe_l2.cpp
   fe/fe_nd.cpp
+  fe/fe_skwgrad.cpp
+  fe/fe_curl.cpp
   fe/fe_nurbs.cpp
   fe/fe_pos.cpp
   fe/fe_pyramid.cpp
@@ -189,6 +191,8 @@ set(HDRS
   fe/fe_h1.hpp
   fe/fe_l2.hpp
   fe/fe_nd.hpp
+  fe/fe_skwgrad.hpp
+  fe/fe_curl.hpp
   fe/fe_nurbs.hpp
   fe/fe_pos.hpp
   fe/fe_pyramid.hpp

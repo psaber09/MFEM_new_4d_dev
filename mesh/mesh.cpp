@@ -8560,7 +8560,10 @@ void Mesh::GetElementFaces(int i, Array<int> &el_faces, Array<int> &ori) const
    {
       if (faces_info[el_faces[j]].Elem1No == i)
       {
+         auto temp_val = faces_info[el_faces[j]].Elem1Inf %64;
+         //std::cout << "temp_val = " << temp_val << std::endl;
          ori[j] = faces_info[el_faces[j]].Elem1Inf % 64;
+         //std::cout << "ori[j] = " << ori[j] << std::endl;
       }
       else
       {
@@ -9140,6 +9143,12 @@ void Mesh::GenerateFaces()
     for (int i = 0; i < NumOfElements; ++i)
     {
         elements[i]->GetVertices(v);
+//        std::cout << "Vertex 1: " << v[0] << std::endl;
+//        std::cout << "Vertex 2: " << v[1] << std::endl;
+//        std::cout << "Vertex 3: " << v[2] << std::endl;
+//        std::cout << "Vertex 4: " << v[3] << std::endl;
+//        std::cout << "Vertex 5: " << v[4] << std::endl;
+
         if (Dim == 1)
         {
             AddPointFaceElement(0, v[0], i);
@@ -9288,6 +9297,7 @@ void Mesh::GenerateFaces()
                         
                         const int *fv = pent_t::FaceVert[filter[j]];
                         // printf("%d:: %d %d %d %d\n",ef[filter[j]],tempv[fv[0]], tempv[fv[1]], tempv[fv[2]], tempv[fv[3]]);
+                        //printf("%d:: %d %d %d %d\n",ef[filter[j]],v[fv[0]], v[fv[1]], v[fv[2]], v[fv[3]]);
                         AddTetrahedralFaceElement(j, ef[filter[j]], i,
                                                   v[fv[0]], v[fv[1]], v[fv[2]], v[fv[3]]);
                         

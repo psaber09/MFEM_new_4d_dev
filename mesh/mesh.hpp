@@ -1545,6 +1545,11 @@ public:
    {
       return boundary[i]->GetGeometryType();
    }
+    
+   Geometry::Type GetBdrElementPlanarGeometry(int i) const
+   {
+       return planars[i]->GetGeometryType();
+   }
 
    /// Deprecated in favor of Mesh::GetFaceGeometry
    MFEM_DEPRECATED Geometry::Type GetFaceBaseGeometry(int i) const

@@ -12,6 +12,8 @@
 // H1 Finite Element classes
 
 #include "fe_h1.hpp"
+#include <fstream>
+
 
 namespace mfem
 {
@@ -550,6 +552,14 @@ void H1_TriangleElement::CalcShape(const IntegrationPoint &ip,
       }
 
    Ti.Mult(u, shape);
+    
+        for (int i =0; i<dof; i++) {
+            //for (int j = 0; j<dim; j++) {
+                std::cout << shape(i) << ",";
+            //}
+            std::cout << std::endl;
+        }
+    std::cout << "end" << std::endl;
 }
 
 void H1_TriangleElement::CalcDShape(const IntegrationPoint &ip,
@@ -778,6 +788,14 @@ void H1_TetrahedronElement::CalcShape(const IntegrationPoint &ip,
          }
 
    Ti.Mult(u, shape);
+    
+        for (int i =0; i<dof; i++) {
+            //for (int j = 0; j<dim; j++) {
+                std::cout << shape(i) << ",";
+            //}
+            std::cout << std::endl;
+        }
+    std::cout << "end" << std::endl;
 }
 
 void H1_TetrahedronElement::CalcDShape(const IntegrationPoint &ip,
@@ -1635,9 +1653,8 @@ H1_PentatopeElement_Barycentric::H1_PentatopeElement_Barycentric(const int p, co
 //       }
 //       logfile.close();
 //
-//       std::ofstream A_file("T_matrix.txt");
-//
-//       T.PrintMatlab(A_file);
+      std::ofstream T_H1_file("T_matrix_H1.txt");
+      T.PrintMatlab(T_H1_file);
 
 
        //mfem_error("Stop for debug");
@@ -1930,6 +1947,14 @@ void H1_PentatopeElement_Barycentric::CalcShape(const IntegrationPoint &ip,
     
 
    Ti.Mult(u, shape);
+    
+    for (int i =0; i<dof; i++) {
+        //for (int j = 0; j<dim; j++) {
+            std::cout << shape(i) << ",";
+        //}
+        std::cout << std::endl;
+    }
+std::cout << "end" << std::endl;
     
 //    for (int i = 0; i<local_dof; i++) {
 //        logfile << "shape " << i << "= " << shape(i) << std::endl;

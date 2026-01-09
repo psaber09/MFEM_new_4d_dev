@@ -306,6 +306,7 @@ protected:
 
    // precalculated DOFs for each element, boundary element, and face
    mutable Table *elem_dof; // owned (except in NURBS FE space)
+   mutable Table *elem_pos; // planar (4D faces) orientations by element index
    mutable Table *elem_fos; // face orientations by element index
    mutable Table *bdr_elem_dof; // owned (except in NURBS FE space)
    mutable Table *bdr_elem_fos; // bdr face orientations by bdr element index

@@ -286,10 +286,14 @@ public:
                           $ u(x) = (1/w) \hat u(\hat x) $ */
       H_DIV,     /**< For vector fields; preserves surface integrals of the
                           normal component $ u(x) = (J/w) \hat u(\hat x) $ */
-      H_CURL     /**< For vector fields; preserves line integrals of the
+      H_CURL,    /**< For vector fields; preserves line integrals of the
                           tangential component
                           $ u(x) = J^{-t} \hat u(\hat x) $ (square J),
                           $ u(x) = J(J^t J)^{-1} \hat u(\hat x) $ (general J) */
+      H_DIV_SKEW, /**< For Matrix basis; preserves face integrals of the tangential components*/
+       
+      H_SkwGrad  /**< For vector fields; preserves surface integrals of
+                      three orthogonal vectors on facets*/
    };
 
    /** @brief Enumeration for DerivType: defines which derivative method
@@ -304,7 +308,9 @@ public:
       NONE, ///< No derivatives implemented
       GRAD, ///< Implements CalcDShape methods
       DIV,  ///< Implements CalcDivShape methods
-      CURL  ///< Implements CalcCurlShape methods
+      CURL, ///< Implements CalcCurlShape methods
+      SkwGrad  ///< Implements CalcSkwGradShape methods
+
    };
 
    /** @brief Construct FiniteElement with given
@@ -468,6 +474,12 @@ public:
        CDim = 1 for #dim = 2. */
    virtual void CalcCurlShape(const IntegrationPoint &ip,
                               DenseMatrix &curl_shape) const;
+    
+   virtual void CalcSkwGradShape(const IntegrationPoint &ip,
+                               DenseMatrix &SkwGrad_shape) const;
+    
+   virtual void CalcDivSkewShape(const IntegrationPoint &ip,
+                                  DenseMatrix &curl_shape) const;
 
    /** @brief Evaluate the curl of all shape functions of a *vector* finite
        element in physical space at the point described by @a Trans. */
@@ -831,6 +843,9 @@ protected:
 
    void CalcVShape_RT(ElementTransformation &Trans,
                       DenseMatrix &shape) const;
+    
+   void CalcVShape_DivSkew(ElementTransformation &Trans,
+                           DenseMatrix &shape) const;
 
    void CalcVShape_ND(ElementTransformation &Trans,
                       DenseMatrix &shape) const;

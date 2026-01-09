@@ -400,16 +400,25 @@ void FiniteElementSpace::BuildElementToDofTable() const
 
    // TODO: can we call GetElementDofs only once per element?
    Table *el_dof = new Table;
+   Table *el_pos = (mesh->Dimension() > 3) ? (new Table) : NULL;
    Table *el_fos = (mesh->Dimension() > 2) ? (new Table) : NULL;
    Array<int> dofs;
+   Array<int> P, Po;
    Array<int> F, Fo;
    el_dof->MakeI(mesh->GetNE());
+   if (el_pos) { el_pos->MakeI(mesh->GetNE()); }
    if (el_fos) { el_fos->MakeI(mesh->GetNE()); }
    for (int i = 0; i < mesh->GetNE(); i++)
    {
       GetElementDofs(i, dofs);
       el_dof->AddColumnsInRow(i, dofs.Size());
-
+       
+      if (el_pos)
+      {
+         mesh->GetElementPlanars(i, P, Po);
+         el_pos->AddColumnsInRow(i, Po.Size());
+      }
+       
       if (el_fos)
       {
          mesh->GetElementFaces(i, F, Fo);
@@ -417,11 +426,18 @@ void FiniteElementSpace::BuildElementToDofTable() const
       }
    }
    el_dof->MakeJ();
+   if (el_pos) { el_pos->MakeJ(); }
    if (el_fos) { el_fos->MakeJ(); }
    for (int i = 0; i < mesh->GetNE(); i++)
    {
       GetElementDofs(i, dofs);
       el_dof->AddConnections(i, (int *)dofs, dofs.Size());
+       
+      if (el_fos && mesh->Dimension() > 3)
+      {
+         mesh->GetElementPlanars(i, P, Po);
+         el_pos->AddConnections(i, (int *)Po, Po.Size());
+      }
 
       if (el_fos)
       {
@@ -430,8 +446,10 @@ void FiniteElementSpace::BuildElementToDofTable() const
       }
    }
    el_dof->ShiftUpI();
+   if (el_pos) { el_pos->ShiftUpI(); }
    if (el_fos) { el_fos->ShiftUpI(); }
    elem_dof = el_dof;
+   elem_pos = el_pos;
    elem_fos = el_fos;
 }
 
@@ -2800,6 +2818,33 @@ void FiniteElementSpace::ConstructDoFTransArray()
             new ND_PyramidDofTransformation(nd_pyr->GetOrder());
       }
    }
+    
+    if (dynamic_cast<const SkwGrad_FECollection*>(fec))
+    {
+        const FiniteElement *skwGrad_tri =
+        fec->FiniteElementForGeometry(Geometry::TRIANGLE);
+        if (skwGrad_tri)
+        {
+            DoFTransArray[Geometry::TRIANGLE] =
+            new ND_TriDofTransformation(skwGrad_tri->GetOrder());
+        }
+        
+        const FiniteElement *skwGrad_tet =
+        fec->FiniteElementForGeometry(Geometry::TETRAHEDRON);
+        if (skwGrad_tet)
+        {
+            DoFTransArray[Geometry::TETRAHEDRON] =
+            new ND_TetDofTransformation(skwGrad_tet->GetOrder());
+        }
+        
+        const FiniteElement *skwGrad_Pent =
+        fec->FiniteElementForGeometry(Geometry::PENTATOPE);
+        if (skwGrad_Pent)
+        {
+            DoFTransArray[Geometry::PENTATOPE] =
+            new ND_PentDofTransformation(skwGrad_Pent->GetOrder());
+        }
+    }
 }
 
 NURBSExtension *FiniteElementSpace::StealNURBSext()
@@ -3622,7 +3667,9 @@ void FiniteElementSpace::GetElementDofs(int elem, Array<int> &dofs,
                                         DofTransformation &doftrans) const
 {
    MFEM_VERIFY(!orders_changed, msg_orders_changed);
-
+    
+   const int dim = mesh->Dimension();
+    
    if (elem_dof)
    {
       elem_dof->GetRow(elem, dofs);
@@ -3630,10 +3677,25 @@ void FiniteElementSpace::GetElementDofs(int elem, Array<int> &dofs,
       if (DoFTransArray[mesh->GetElementBaseGeometry(elem)])
       {
          Array<int> Fo;
+         Array<int> Po;
+         if (dim > 3)
+         {
+             elem_pos -> GetRow (elem, Po);
+         }
          elem_fos -> GetRow (elem, Fo);
          doftrans.SetDofTransformation(
             *DoFTransArray[mesh->GetElementBaseGeometry(elem)]);
-         doftrans.SetFaceOrientations(Fo);
+          
+         if (dim == 4)
+         {
+             doftrans.SetPlanarOrientations(Po);
+             doftrans.SetFaceOrientations(Fo);
+         }
+         else
+         {
+             doftrans.SetFaceOrientations(Fo);
+         }
+
          doftrans.SetVDim();
       }
       return;
@@ -3641,7 +3703,6 @@ void FiniteElementSpace::GetElementDofs(int elem, Array<int> &dofs,
 
    Array<int> V, E, Eo, F, Fo, P, Po; // TODO: LocalArray
 
-   const int dim = mesh->Dimension();
    const auto geom = mesh->GetElementGeometry(elem);
    const int order = GetElementOrderImpl(elem);
 
@@ -3653,13 +3714,30 @@ void FiniteElementSpace::GetElementDofs(int elem, Array<int> &dofs,
 
    if (nv) { mesh->GetElementVertices(elem, V); }
    if (ne) { mesh->GetElementEdges(elem, E, Eo); }
-   if (np) { mesh->GetElementPlanars(elem, P, Po); }
+   //if (np) { mesh->GetElementPlanars(elem, P, Po); }
+//    std::cout << "Edge 1 " << E[0] << std::endl;
+//    std::cout << "Edge 2 " << E[1] << std::endl;
+//    std::cout << "Edge 3 " << E[2] << std::endl;
+//    std::cout << "Edge 4 " << E[3] << std::endl;
+//    std::cout << "Edge 5 " << E[4] << std::endl;
+//    std::cout << "Edge 6 " << E[5] << std::endl;
+//    std::cout << "Edge 7 " << E[6] << std::endl;
+//    std::cout << "Edge 8 " << E[7] << std::endl;
+//    std::cout << "Edge 9 " << E[8] << std::endl;
+//    std::cout << "Edge 10 " << E[9] << std::endl;
 
 
    int nfd = 0;
    if (dim > 2 && fec->HasFaceDofs(geom, order))
    {
       mesh->GetElementFaces(elem, F, Fo);
+//       std::cout << "FESPACE Post ---------" << std::endl;
+//       std::cout << "Facet Oreint 1 " << Fo[0] << std::endl;
+//       std::cout << "Facet Oreint 2 " << Fo[1] << std::endl;
+//       std::cout << "Facet Oreint 3 " << Fo[2] << std::endl;
+//       std::cout << "Facet Oreint 4 " << Fo[3] << std::endl;
+//       std::cout << "Facet Oreint 5 " << Fo[4] << std::endl;
+
       for (int i = 0; i < F.Size(); i++)
       {
          nfd += fec->GetNumDof(mesh->GetFaceGeometry(F[i]), order);
@@ -3672,6 +3750,23 @@ void FiniteElementSpace::GetElementDofs(int elem, Array<int> &dofs,
          doftrans.SetVDim();
       }
    }
+    //auto sample = fec->HasPlanarDofs(geom);
+    if (dim > 3 && fec->HasPlanarDofs(geom)>0) // was fec->HasPlanarDofs(geom)
+    {
+       mesh->GetElementPlanars(elem, P, Po);
+//       for (int i = 0; i < P.Size(); i++)
+//       {
+//          //npd += fec->GetNumDof(mesh->GetFaceGeometry(F[i]), order);  ** We do not need already set
+//       }
+        auto basegeo = mesh->GetElementBaseGeometry(0);
+       if (DoFTransArray[mesh->GetElementBaseGeometry(elem)])
+       {
+          doftrans.SetDofTransformation(
+             *DoFTransArray[mesh->GetElementBaseGeometry(elem)]);
+          doftrans.SetPlanarOrientations(Po); // Face in this context should be refering to planars
+          doftrans.SetVDim();
+       }
+    }
 
    dofs.SetSize(0);
    dofs.Reserve(nv*V.Size() + ne*E.Size() + np*P.Size() + nfd + nb);
@@ -3721,7 +3816,6 @@ void FiniteElementSpace::GetElementDofs(int elem, Array<int> &dofs,
       {
          auto fgeom = mesh->GetFaceGeometry(F[i]);
          int nf = fec->GetNumDof(fgeom, order);
-
          int fbase = (var_face_dofs.Size() > 0) ? FindFaceDof(F[i], nf) : F[i]*nf;
          const int *ind = fec->GetDofOrdering(fgeom, order, Fo[i]);
 
@@ -3774,7 +3868,7 @@ void FiniteElementSpace::GetBdrElementDofs(int bel, Array<int> &dofs,
    }
 
    Array<int> V, E, Eo, P, Po; // TODO: LocalArray
-   int F, oF;
+   int F, oF, int_P, oP;
 
    int dim = mesh->Dimension();
    auto geom = mesh->GetBdrElementGeometry(bel);
@@ -3796,10 +3890,11 @@ void FiniteElementSpace::GetBdrElementDofs(int bel, Array<int> &dofs,
    if (nv) { mesh->GetBdrElementVertices(bel, V); }
    if (ne) { mesh->GetBdrElementEdges(bel, E, Eo); }
    if (np) { mesh->GetBdrElementPlanars(bel, P, Po); }
+    
    if (nf)
    {
       mesh->GetBdrElementFace(bel, &F, &oF);
-
+      auto var2 = * DoFTransArray;
       if (DoFTransArray[mesh->GetBdrElementGeometry(bel)])
       {
          mfem::Array<int> Fo(1);
@@ -3810,6 +3905,21 @@ void FiniteElementSpace::GetBdrElementDofs(int bel, Array<int> &dofs,
          doftrans.SetVDim();
       }
    }
+    
+    if (np)
+    {
+       //mesh->GetBdrElementPlanars(bel, &P, &Po);
+        //std::cout << "Print" << var << std::endl;
+       if (DoFTransArray[mesh->GetBdrElementGeometry(bel)])
+       {
+          //mfem::Array<int> Po(1);
+          //Po[0] = oP;
+          doftrans.SetDofTransformation(
+             *DoFTransArray[mesh->GetBdrElementGeometry(bel)]);
+          doftrans.SetPlanarOrientations(Po); // Face at this point should refer to planars
+          doftrans.SetVDim();
+       }
+    }
 
    dofs.SetSize(0);
    dofs.Reserve(nv*V.Size() + ne*E.Size() + np*P.Size() + nf);

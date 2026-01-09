@@ -480,6 +480,96 @@ public:
                              const int ob_type = BasisType::GaussLegendre);
 };
 
+
+/// Arbitrary order H(curl)-conforming Nedelec finite elements.
+class SkwGrad_FECollection : public FiniteElementCollection
+{
+protected:
+   int dim;
+   int cb_type; // closed BasisType
+   int ob_type; // open BasisType
+   char SkwGrad_name[32];
+   FiniteElement *SkwGrad_Elements[Geometry::NumGeom];
+   int SkwGrad_dof[Geometry::NumGeom];
+   int *SegDofOrd[2], *TriDofOrd[6], *QuadDofOrd[8], *TetDofOrd[24];
+
+public:
+   SkwGrad_FECollection(const int p, const int dim,
+                   const int cb_type = BasisType::GaussLobatto,
+                   const int ob_type = BasisType::GaussLegendre);
+
+   const FiniteElement *
+   FiniteElementForGeometry(Geometry::Type GeomType) const override;
+
+   int DofForGeometry(Geometry::Type GeomType) const override
+   { return SkwGrad_dof[GeomType]; }
+
+   const StatelessDofTransformation *
+   DofTransformationForGeometry(Geometry::Type GeomType) const override;
+
+   const int *DofOrderForOrientation(Geometry::Type GeomType,
+                                     int Or) const override;
+
+   const char *Name() const override { return SkwGrad_name; }
+
+   int GetContType() const override { return TANGENTIAL; }
+
+   //FiniteElementCollection *GetTraceCollection() const override;
+
+   int GetClosedBasisType() const { return cb_type; }
+   int GetOpenBasisType() const { return ob_type; }
+
+//   FiniteElementCollection *Clone(int p) const override
+//   { return new ND_FECollection(p, dim, cb_type, ob_type); }
+
+   virtual ~SkwGrad_FECollection();
+};
+
+/// Arbitrary order H(curl)-conforming Nedelec finite elements.
+class HCurl_FECollection : public FiniteElementCollection
+{
+protected:
+   int dim;
+   int cb_type; // closed BasisType
+   int ob_type; // open BasisType
+   char HCurl_name[32];
+   FiniteElement *HCurl_Elements[Geometry::NumGeom];
+   int HCurl_dof[Geometry::NumGeom];
+   int *SegDofOrd[2], *TriDofOrd[6], *QuadDofOrd[8], *TetDofOrd[24];
+
+public:
+   HCurl_FECollection(const int p, const int dim,
+                   const int cb_type = BasisType::GaussLobatto,
+                   const int ob_type = BasisType::GaussLegendre);
+
+   const FiniteElement *
+   FiniteElementForGeometry(Geometry::Type GeomType) const override;
+
+   int DofForGeometry(Geometry::Type GeomType) const override
+   { return HCurl_dof[GeomType]; }
+
+   const StatelessDofTransformation *
+   DofTransformationForGeometry(Geometry::Type GeomType) const override;
+
+   const int *DofOrderForOrientation(Geometry::Type GeomType,
+                                     int Or) const override;
+
+   const char *Name() const override { return HCurl_name; }
+
+   int GetContType() const override { return TANGENTIAL; }
+
+   //FiniteElementCollection *GetTraceCollection() const override;
+
+   int GetClosedBasisType() const { return cb_type; }
+   int GetOpenBasisType() const { return ob_type; }
+
+//   FiniteElementCollection *Clone(int p) const override
+//   { return new ND_FECollection(p, dim, cb_type, ob_type); }
+
+   virtual ~HCurl_FECollection();
+};
+
+
 /// Arbitrary order H(curl)-conforming Nedelec finite elements.
 class ND_FECollection : public FiniteElementCollection
 {
@@ -1414,6 +1504,67 @@ public:
    const char *Name() const override { return "ND1_3D"; }
 
    int GetContType() const override { return TANGENTIAL; }
+};
+
+class ND1_4DFECollection : public FiniteElementCollection
+{
+private:
+   const Nedelec1PentFiniteElement NedPentatopFE;
+
+public:
+   ND1_4DFECollection() { }
+
+   virtual const FiniteElement *
+   FiniteElementForGeometry(Geometry::Type GeomType) const;
+
+   virtual int DofForGeometry(Geometry::Type GeomType) const;
+
+   virtual const int * DofOrderForOrientation(Geometry::Type GeomType,
+                                              int Or) const;
+
+   virtual const char * Name() const { return "ND1_4D"; }
+   int GetContType() const override { return TANGENTIAL; }
+};
+
+class ND2_4DFECollection : public FiniteElementCollection
+{
+private:
+   const Nedelec1FullPentFiniteElement NedPentatopFE;
+
+public:
+   ND2_4DFECollection() { }
+
+   virtual const FiniteElement *
+   FiniteElementForGeometry(Geometry::Type GeomType) const;
+
+   virtual int DofForGeometry(Geometry::Type GeomType) const;
+
+   virtual const int * DofOrderForOrientation(Geometry::Type GeomType,
+                                              int Or) const;
+
+   virtual const char * Name() const { return "ND2_4D"; }
+   int GetContType() const override { return TANGENTIAL; }
+};
+
+class DivSkew1_4DFECollection : public FiniteElementCollection
+{
+private:
+   const DivSkew1PentFiniteElement DivSkew0PentatopFE;
+
+public:
+   DivSkew1_4DFECollection() { }
+
+   virtual const FiniteElement *
+   FiniteElementForGeometry(Geometry::Type GeomType) const;
+
+   virtual int DofForGeometry(Geometry::Type GeomType) const;
+
+   virtual const int * DofOrderForOrientation(Geometry::Type GeomType,
+                                              int Or) const;
+
+   virtual const char * Name() const { return "F2K0_4D"; }
+   int GetContType() const override { return TANGENTIAL; }
+
 };
 
 /** @brief First order Raviart-Thomas finite elements in 3D. This class is kept

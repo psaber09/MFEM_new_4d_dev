@@ -1254,6 +1254,15 @@ Constants<Geometry::PENTATOPE>::FaceVert[5][4] =
    {1, 2, 3, 4}
 };
 const int Geometry::
+Constants<Geometry::PENTATOPE>::PlanarTypes[10] =
+{
+   Geometry::TRIANGLE, Geometry::TRIANGLE,
+   Geometry::TRIANGLE, Geometry::TRIANGLE,
+   Geometry::TRIANGLE, Geometry::TRIANGLE,
+   Geometry::TRIANGLE, Geometry::TRIANGLE,
+   Geometry::TRIANGLE, Geometry::TRIANGLE,
+};
+const int Geometry::
 Constants<Geometry::PENTATOPE>::PlanarVert[10][3] =
 {
    {0, 1, 2}, {0, 1, 3}, {0, 1, 4},

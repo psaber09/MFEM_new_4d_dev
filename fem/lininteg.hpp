@@ -203,6 +203,8 @@ public:
    using LinearFormIntegrator::AssembleRHSElementVect;
 };
 
+
+
 /// Class for boundary integration $ L(v) = (g \cdot n, v) $
 class BoundaryNormalLFIntegrator : public LinearFormIntegrator
 {
@@ -578,6 +580,42 @@ public:
                                Vector &elvect) override;
 
    using LinearFormIntegrator::AssembleRHSElementVect;
+};
+
+class VectorDGDirichletLFIntegrator : public LinearFormIntegrator
+{
+protected:
+   VectorCoefficient &uD;
+   Coefficient *Q = nullptr;
+   MatrixCoefficient *MQ = nullptr;
+   real_t sigma, kappa;
+   int vdim;
+
+   // these are not thread-safe!
+   Vector shape, dshape_dn, nor, nh, ni, uD_vec;
+   DenseMatrix dshape, mq, adjJ;
+
+public:
+   VectorDGDirichletLFIntegrator(VectorCoefficient &u, real_t s, real_t k,
+                                 int vd=-1)
+      : uD(u), sigma(s), kappa(k), vdim(vd) { }
+   VectorDGDirichletLFIntegrator(VectorCoefficient &u, Coefficient &q, real_t s,
+                                 real_t k, int vd=-1)
+      : uD(u), Q(&q), sigma(s), kappa(k), vdim(vd) { }
+   VectorDGDirichletLFIntegrator(VectorCoefficient &u, MatrixCoefficient &mq,
+                                 real_t s, real_t k, int vd=-1)
+      : uD(u), MQ(&mq), sigma(s), kappa(k), vdim(vd) { }
+
+   using LinearFormIntegrator::AssembleRHSElementVect;
+
+   void AssembleRHSElementVect(const FiniteElement &el,
+                               ElementTransformation &Tr,
+                               Vector &elvect) override
+   { MFEM_ABORT("Not implemented."); }
+
+   void AssembleRHSElementVect(const FiniteElement &el,
+                               FaceElementTransformations &Tr,
+                               Vector &elvect) override;
 };
 
 
