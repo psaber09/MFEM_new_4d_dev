@@ -240,9 +240,9 @@ int main(int argc, char *argv[])
    a->FormLinearSystem(ess_tdof_list, x, *b, A, X, B); // x = x_ess + X
    // A*X = f - A*x_ess = B
 
-    std::ofstream A_file("A_matrix.txt");
-
-    A->PrintMatlab(A_file);
+//    std::ofstream A_file("A_matrix.txt");
+//
+//    A->PrintMatlab(A_file);
 
 
    cout << "Size of linear system: " << A->Height() << endl;

@@ -3304,7 +3304,7 @@ SkwGrad_FECollection::SkwGrad_FECollection(const int p, const int dim,
    {
        SkwGrad_Elements[Geometry::PENTATOPE] = new HSkwGrad_PentatopeElement(p);
        //SkwGrad_dof[Geometry::PENTATOPE] = (1/6)*p*(p+2)*(p+3)*(p+4);
-       SkwGrad_dof[Geometry::PENTATOPE] = 20; //p*(p+2)*(p+3)*(p+4)/6;
+       SkwGrad_dof[Geometry::PENTATOPE] = p*(p-1)*(p-2)*(p-3)/6; //p*(p+2)*(p+3)*(p+4)/6;
    }
 }
 
@@ -3438,7 +3438,7 @@ HCurl_FECollection::HCurl_FECollection(const int p, const int dim,
    if (dim >= 2)
    {
       // TODO: cb_type and ob_type for triangles
-      HCurl_Elements[Geometry::TRIANGLE] = new ND_TriangleElement(p);
+      HCurl_Elements[Geometry::TRIANGLE] = new RT_TriangleElement(p);
       HCurl_dof[Geometry::TRIANGLE] = p;
 
       
@@ -3497,9 +3497,9 @@ HCurl_FECollection::HCurl_FECollection(const int p, const int dim,
    {
 
       // TODO: cb_type and ob_type for tets
-      HCurl_Elements[Geometry::TETRAHEDRON] = new ND_TetrahedronElement(p);
+      HCurl_Elements[Geometry::TETRAHEDRON] = new RT_TetrahedronElement(p);
       int Num_dofs = p*pm1*pm2/2;
-      HCurl_dof[Geometry::TETRAHEDRON] = p*pm1*pm2/2;
+      HCurl_dof[Geometry::TETRAHEDRON] = 0;//p*pm1*pm2/2;
 
       int TetDof_SkwGrad = HCurl_dof[Geometry::TETRAHEDRON];
       std::cout << "Number of Tet DOF SkwGrad = " << TetDof_SkwGrad << std::endl;

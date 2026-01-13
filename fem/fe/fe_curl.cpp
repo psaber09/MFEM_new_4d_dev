@@ -40,6 +40,34 @@ dof2tk(dof), doftrans(p)
     const real_t *iop = (p > 2) ? poly1d.OpenPoints(p - 3) : NULL;
     
     const int pm1 = p - 1, pm2 = p - 2, pm3 = p - 3, pm4 = p -4;
+    
+    // Lamda function for computing the scaled skew-symmetric-outer-product of two four vectors
+    auto skw_sym_outerprod_fnc = [&](const std::vector<double>& vec1, const std::vector<double>& vec2)
+    {
+
+        DenseMatrix result(4,4);
+        double s_factor = 1.0;
+        //std::cout << "Skw-sym Prod" << std::endl;
+        // "Forward" Product
+        for (int i = 0; i < vec1.size(); ++i)
+        {
+            for (int j = 0; j < vec2.size(); ++j)
+            {
+                // Forward Product
+                double outer_prod_1 = vec1[i] * vec2[j];
+                
+                // "Backward" Product
+                double outer_prod_2 = vec2[i] * vec1[j];
+                
+                // Compute Result
+                result(i,j) = s_factor*(outer_prod_1 - outer_prod_2);
+                //std::cout << 0.5*(outer_prod_1 - outer_prod_2) << std::endl;
+            }
+            //std::cout << "New COl --------" << std::endl;
+        }
+        
+        return result;
+    }; // end of lamda function
 
     
 #ifndef MFEM_THREAD_SAFE
@@ -60,6 +88,7 @@ dof2tk(dof), doftrans(p)
 #endif
     // edges (see Tetrahedron::edges in mesh/tetrahedron.cpp)
     int o = 0;
+    
     // faces (see Mesh::GeneratePlanars in mesh/mesh.cpp)
     for (int j = 0; j < p; j++)
        for (int i=0; i + j < p; i++) // (0,1,2)
@@ -244,56 +273,77 @@ dof2tk(dof), doftrans(p)
         std::vector<double> grad_La, grad_Lb, grad_Lc, grad_Ld, grad_Le;
         
         
-        int edge_counter = 0;
-        //Edges
-        for(int i=0; i<p; i++)
+        //Faces
+        for(int i=0; i<p;i++)
         {
-            for(int a=0; a<5; a++)
+            for(int j=0; j<p;j++)
             {
-                for(int b=0; b<5; b++)
+                for(int a=0; a<5;a++)
                 {
-                    if(a<b)
+                    for(int b=0; b<5;b++)
                     {
-                        La = bary_vector[a];
-                        Lb = bary_vector[b];
-                        
-                        edge_counter = edge_counter + 1;
-                        
-                        // compute polynomials
-                        std::vector<double> Legendre_i;
-                        double x = Lb;
-                        double y = La + Lb;
-                        poly1d.CalcLegendreShifted(i, x, y, Legendre_i);
-                        
-                        // Whitney Function
-                        //std::vector<double> Whit_Vec = WH_func(a,b);
-//                        
-//                        // Add Basis Funcitons
-//                        double x_comp = Legendre_i[Legendre_i.size()-1]*Whit_Vec[0];
-//                        double Whitx = Whit_Vec[0];
-//                        B(o, 0) = x_comp;
-//                        
-//                        double y_comp = Legendre_i[Legendre_i.size()-1]*Whit_Vec[1];
-//                        double Whity = Whit_Vec[1];
-//                        
-//                        B(o, 1) = y_comp;
-//                        
-//                        double z_comp = Legendre_i[Legendre_i.size()-1]*Whit_Vec[2];
-//                        double Whitz = Whit_Vec[2];
-//                        
-//                        B(o, 2) = z_comp;
-//                        
-//                        double t_comp = Legendre_i[Legendre_i.size()-1]*Whit_Vec[3];
-//                        double Whitt = Whit_Vec[3];
-//                        
-//                        B(o, 3) = t_comp;
-                        
-                        o++;
-                        
+                        for(int c=0; c<5;c++)
+                        {
+                            if((a<b)&&(b<c)&&((i+j)<p))
+                            {
+                                
+                                La = bary_vector[a];
+                                Lb = bary_vector[b];
+                                Lc = bary_vector[c];
+                                
+                                grad_La = gradbary_vector[a];
+                                grad_Lb = gradbary_vector[b];
+                                grad_Lc = gradbary_vector[c];
+                                
+                                // compute polynomials
+                                std::vector<double> Legendre_i;
+                                double x = Lb;
+                                double y = La + Lb;
+                                poly1d.CalcLegendreShifted(i, x, y, Legendre_i);
+                                
+                                std::vector<double> Jacobi_j;
+                                x = Lc;
+                                y = La + Lb + Lc;
+                                double alpha = 2*i + 1;
+                                poly1d.CalcJacobi(j, x, y, alpha, Jacobi_j);
+                                
+                                // Scaled Skew-sym outer product
+                                DenseMatrix skw_sym_outerprod_1 = skw_sym_outerprod_fnc(grad_Lb, grad_Lc);
+                                DenseMatrix skw_sym_outerprod_2 = skw_sym_outerprod_fnc(grad_Lc, grad_La);
+                                DenseMatrix skw_sym_outerprod_3 = skw_sym_outerprod_fnc(grad_La, grad_Lb);
+
+                                
+                                // Add Basis Funcitons
+                                B(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,0) + Lb*skw_sym_outerprod_2(0,0) + Lc*skw_sym_outerprod_3(0,0));
+                                B(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,1) + Lb*skw_sym_outerprod_2(0,1) + Lc*skw_sym_outerprod_3(0,1));
+                                B(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,2) + Lb*skw_sym_outerprod_2(0,2) + Lc*skw_sym_outerprod_3(0,2));
+                                B(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,3) + Lb*skw_sym_outerprod_2(0,3) + Lc*skw_sym_outerprod_3(0,3));
+                                B(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,0) + Lb*skw_sym_outerprod_2(1,0) + Lc*skw_sym_outerprod_3(1,0));
+                                B(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,1) + Lb*skw_sym_outerprod_2(1,1) + Lc*skw_sym_outerprod_3(1,1));
+                                B(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,2) + Lb*skw_sym_outerprod_2(1,2) + Lc*skw_sym_outerprod_3(1,2));
+                                B(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,3) + Lb*skw_sym_outerprod_2(1,3) + Lc*skw_sym_outerprod_3(1,3));
+                                B(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,0) + Lb*skw_sym_outerprod_2(2,0) + Lc*skw_sym_outerprod_3(2,0));
+                                B(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,1) + Lb*skw_sym_outerprod_2(2,1) + Lc*skw_sym_outerprod_3(2,1));
+                                B(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,2) + Lb*skw_sym_outerprod_2(2,2) + Lc*skw_sym_outerprod_3(2,2));
+                                B(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,3) + Lb*skw_sym_outerprod_2(2,3) + Lc*skw_sym_outerprod_3(2,3));
+                                B(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,0) + Lb*skw_sym_outerprod_2(3,0) + Lc*skw_sym_outerprod_3(3,0));
+                                B(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,1) + Lb*skw_sym_outerprod_2(3,1) + Lc*skw_sym_outerprod_3(3,1));
+                                B(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,2) + Lb*skw_sym_outerprod_2(3,2) + Lc*skw_sym_outerprod_3(3,2));
+                                B(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,3) + Lb*skw_sym_outerprod_2(3,3) + Lc*skw_sym_outerprod_3(3,3));
+
+                                o++;
+                                
+                                
+                            }
+                        }
                     }
                 }
             }
-        }  // end of edges
+        }
+        // end of faces
+        
+        B.Mult(tm, T.GetColumn(q));
+
     }
         
 
@@ -341,13 +391,42 @@ void HCurl_PentatopeElement::CalcVShape(const IntegrationPoint &ip,
     double La, Lb, Lc, Ld, Le;
     
     std::vector<double> grad_La, grad_Lb, grad_Lc, grad_Ld, grad_Le;
+    
+    
+    // Lamda function for computing the scaled skew-symmetric-outer-product of two four vectors
+    auto skw_sym_outerprod_fnc = [&](const std::vector<double>& vec1, const std::vector<double>& vec2)
+    {
+
+        DenseMatrix result(4,4);
+        double s_factor = 1.0;
+        //std::cout << "Skw-sym Prod" << std::endl;
+        // "Forward" Product
+        for (int i = 0; i < vec1.size(); ++i)
+        {
+            for (int j = 0; j < vec2.size(); ++j)
+            {
+                // Forward Product
+                double outer_prod_1 = vec1[i] * vec2[j];
+                
+                // "Backward" Product
+                double outer_prod_2 = vec2[i] * vec1[j];
+                
+                // Compute Result
+                result(i,j) = s_factor*(outer_prod_1 - outer_prod_2);
+                //std::cout << 0.5*(outer_prod_1 - outer_prod_2) << std::endl;
+            }
+            //std::cout << "New COl --------" << std::endl;
+        }
+        
+        return result;
+    }; // end of lamda function
 
     
     
     //Faces
     for(int i=0; i<p;i++)
     {
-        for(int j=1; j<p;j++)
+        for(int j=0; j<p;j++)
         {
             for(int a=0; a<5;a++)
             {
@@ -357,85 +436,52 @@ void HCurl_PentatopeElement::CalcVShape(const IntegrationPoint &ip,
                     {
                         if((a<b)&&(b<c)&&((i+j)<p))
                         {
-                            // Define Family
-                            int Family = 1;
                             
-                            if (Family == 1)
-                            {
-                                
-                                // Family I:
-                                La = bary_vector[a];
-                                Lb = bary_vector[b];
-                                Lc = bary_vector[c];
-                                
-                                // compute polynomials
-                                std::vector<double> Legendre_i;
-                                double x = Lb;
-                                double y = La + Lb;
-                                poly1d.CalcLegendreShifted(i, x, y, Legendre_i);
-                                
-                                std::vector<double> Int_Jacobi_j;
-                                x = Lc;
-                                y = La + Lb + Lc;
-                                double alpha = 2*i +1;
-                                poly1d.CalcIntJacobi(j, x, y, alpha, Int_Jacobi_j);
-                                
-                                // Whitney Function
-                                //std::vector<double> Whit_Vec = WH_func(a,b);
-//                                
-//                                // Add Basis Funcitons
-//                                u(o, 0) = Legendre_i[Legendre_i.size()-1] * Int_Jacobi_j[Int_Jacobi_j.size()-1] * Whit_Vec[0];
-//                                
-//                                u(o, 1) = Legendre_i[Legendre_i.size()-1] * Int_Jacobi_j[Int_Jacobi_j.size()-1] * Whit_Vec[1];
-//                                
-//                                u(o, 2) = Legendre_i[Legendre_i.size()-1] * Int_Jacobi_j[Int_Jacobi_j.size()-1] * Whit_Vec[2];
-//                                
-//                                u(o, 3) = Legendre_i[Legendre_i.size()-1] * Int_Jacobi_j[Int_Jacobi_j.size()-1] * Whit_Vec[3];
-                                
-                                o++;
-                                
-                            }
+                            La = bary_vector[a];
+                            Lb = bary_vector[b];
+                            Lc = bary_vector[c];
                             
-                            Family++;
-                            // Clean up storage for Polynomials
-                            //Legendre_i.clear();
-                            //Int_Jacobi_j.clear();
+                            grad_La = gradbary_vector[a];
+                            grad_Lb = gradbary_vector[b];
+                            grad_Lc = gradbary_vector[c];
                             
-                            if (Family == 2)
-                            {
-                                
-                                // Family I:
-                                La = bary_vector[b];
-                                Lb = bary_vector[c];
-                                Lc = bary_vector[a];
-                                
-                                // compute polynomials
-                                std::vector<double> Legendre_i;
-                                double x = Lb;
-                                double y = La + Lb;
-                                poly1d.CalcLegendreShifted(i, x, y, Legendre_i);
-                                
-                                std::vector<double> Int_Jacobi_j;
-                                x = Lc;
-                                y = La + Lb + Lc;
-                                double alpha = 2*i +1;
-                                poly1d.CalcIntJacobi(j, x, y, alpha, Int_Jacobi_j);
-                                
-//                                // Whitney Function
-//                                std::vector<double> Whit_Vec = WH_func(b,c);
-//                                
-//                                // Add Basis Funcitons
-//                                u(o, 0) = Legendre_i[Legendre_i.size()-1] * Int_Jacobi_j[Int_Jacobi_j.size()-1] * Whit_Vec[0];
-//                                
-//                                u(o, 1) = Legendre_i[Legendre_i.size()-1] * Int_Jacobi_j[Int_Jacobi_j.size()-1] * Whit_Vec[1];
-//                                
-//                                u(o, 2) = Legendre_i[Legendre_i.size()-1] * Int_Jacobi_j[Int_Jacobi_j.size()-1] * Whit_Vec[2];
-//                                
-//                                u(o, 3) = Legendre_i[Legendre_i.size()-1] * Int_Jacobi_j[Int_Jacobi_j.size()-1] * Whit_Vec[3];
-//                                
-                                o++;
-                                
-                            }
+                            // compute polynomials
+                            std::vector<double> Legendre_i;
+                            double x = Lb;
+                            double y = La + Lb;
+                            poly1d.CalcLegendreShifted(i, x, y, Legendre_i);
+                            
+                            std::vector<double> Jacobi_j;
+                            x = Lc;
+                            y = La + Lb + Lc;
+                            double alpha = 2*i + 1;
+                            poly1d.CalcJacobi(j, x, y, alpha, Jacobi_j);
+                            
+                            // Scaled Skew-sym outer product
+                            DenseMatrix skw_sym_outerprod_1 = skw_sym_outerprod_fnc(grad_Lb, grad_Lc);
+                            DenseMatrix skw_sym_outerprod_2 = skw_sym_outerprod_fnc(grad_Lc, grad_La);
+                            DenseMatrix skw_sym_outerprod_3 = skw_sym_outerprod_fnc(grad_La, grad_Lb);
+
+                            
+                            // Add Basis Funcitons
+                            u(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,0) + Lb*skw_sym_outerprod_2(0,0) + Lc*skw_sym_outerprod_3(0,0));
+                            u(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,1) + Lb*skw_sym_outerprod_2(0,1) + Lc*skw_sym_outerprod_3(0,1));
+                            u(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,2) + Lb*skw_sym_outerprod_2(0,2) + Lc*skw_sym_outerprod_3(0,2));
+                            u(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,3) + Lb*skw_sym_outerprod_2(0,3) + Lc*skw_sym_outerprod_3(0,3));
+                            u(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,0) + Lb*skw_sym_outerprod_2(1,0) + Lc*skw_sym_outerprod_3(1,0));
+                            u(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,1) + Lb*skw_sym_outerprod_2(1,1) + Lc*skw_sym_outerprod_3(1,1));
+                            u(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,2) + Lb*skw_sym_outerprod_2(1,2) + Lc*skw_sym_outerprod_3(1,2));
+                            u(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,3) + Lb*skw_sym_outerprod_2(1,3) + Lc*skw_sym_outerprod_3(1,3));
+                            u(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,0) + Lb*skw_sym_outerprod_2(2,0) + Lc*skw_sym_outerprod_3(2,0));
+                            u(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,1) + Lb*skw_sym_outerprod_2(2,1) + Lc*skw_sym_outerprod_3(2,1));
+                            u(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,2) + Lb*skw_sym_outerprod_2(2,2) + Lc*skw_sym_outerprod_3(2,2));
+                            u(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,3) + Lb*skw_sym_outerprod_2(2,3) + Lc*skw_sym_outerprod_3(2,3));
+                            u(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,0) + Lb*skw_sym_outerprod_2(3,0) + Lc*skw_sym_outerprod_3(3,0));
+                            u(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,1) + Lb*skw_sym_outerprod_2(3,1) + Lc*skw_sym_outerprod_3(3,1));
+                            u(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,2) + Lb*skw_sym_outerprod_2(3,2) + Lc*skw_sym_outerprod_3(3,2));
+                            u(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,3) + Lb*skw_sym_outerprod_2(3,3) + Lc*skw_sym_outerprod_3(3,3));
+
+                            o++;
                             
                             
                         }
