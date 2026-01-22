@@ -3140,7 +3140,7 @@ void HSkwGrad_PentatopeElement::CalcSkwGradShape(const IntegrationPoint &ip,
                 }
             }
         }
-        std::cout << "Num bub = " << num_bub << std::endl;
+        //std::cout << "Num bub = " << num_bub << std::endl;
 
     }// End of Interiors
     

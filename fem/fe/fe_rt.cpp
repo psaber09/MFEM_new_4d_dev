@@ -1007,6 +1007,9 @@ RT_TetrahedronElement::RT_TetrahedronElement(const int p)
          }
    }
 
+   std::ofstream Vander_file("T_3Dtet.txt");
+   T.PrintMatlab(Vander_file);
+    
    Ti.Factor(T);
    // mfem::out << "RT_TetrahedronElement(" << p << ") : "; Ti.TestInversion();
 }
@@ -1846,8 +1849,8 @@ Hdiv_PentatopeElement::Hdiv_PentatopeElement(const int p)
 
    }
 
-//   std::ofstream Vander_file("Vander_matrix_Hdiv.txt");
-//   T.PrintMatlab(Vander_file);
+   std::ofstream Vander_file("Vander_matrix_Hdiv.txt");
+   T.PrintMatlab(Vander_file);
 //
 //   std::ofstream basis_file("Basis_matrix.txt");
 //   B.PrintMatlab(basis_file);

@@ -20,7 +20,8 @@ namespace mfem
 
 class HCurl_PentatopeElement : public VectorFiniteElement
 {
-    static const double tk[40], c;
+    
+    static const double  tk1[10][4], tk2[10][4];
     
 #ifndef MFEM_THREAD_SAFE
     mutable Vector shape_x, shape_y, shape_z, shape_t, shape_l;
@@ -60,8 +61,8 @@ public:
     { return &doftrans; }
     using FiniteElement::Project;
     virtual void Project(VectorCoefficient &vc,
-                         ElementTransformation &Trans, Vector &dofs) const override
-    { mfem_error("Error in Project ND referance"); }//Project_ND(tk, dof2tk, vc, Trans, dofs); }
+                         ElementTransformation &Trans, Vector &dofs) const override;
+    //{ mfem_error("Project error"); } //Project_RT(tk, dof2tk, vc, Trans, dofs); } // Changed form ND -> RT projection routine
     virtual void ProjectMatrixCoefficient(
                                           MatrixCoefficient &mc, ElementTransformation &T, Vector &dofs) const override
     {          mfem_error("ProjectMatrixCoefficient error");}

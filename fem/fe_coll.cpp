@@ -3367,6 +3367,7 @@ HCurl_FECollection::HCurl_FECollection(const int p, const int dim,
    MFEM_VERIFY(dim == 4, "HCurl_FECollection requires dim == 4.");
 
    const int pm1 = p - 1, pm2 = p - 2, pm3 = p - 3, pm4 = p -4;
+   const int pp1 = p + 1, pp2 = pp1 +1;
 
    if (cb_type == BasisType::GaussLobatto &&
        ob_type == BasisType::GaussLegendre)
@@ -3451,46 +3452,62 @@ HCurl_FECollection::HCurl_FECollection(const int p, const int dim,
       }
       // see Mesh::GetTriOrientation in mesh/mesh.cpp,
       // the constructor of H1_FECollection
-      for (int j = 0; j <= pm2; j++)
-      {
-         for (int i = 0; i + j <= pm2; i++)
-         {
-            int k0 = p*pm1 - (p - j)*(pm1 - j) + 2*i;
-            int k1 = 2*pm2 - 2*i + ((2*p-3)-j)*j;
-            int k2 = 2*pm2 - 2*j + ((2*p-3)-i)*i;
-            int k3 = p*pm1 - 2 - 3*j - i - (i+j)*(i+j);
-            int k4 = p*pm1 - 2 - 3*i - j - (i+j)*(i+j);
-            int k5 = p*pm1 - (p - i)*(pm1 - i) + 2*j;
-
-            // (0,1,2)
-            TriDofOrd[0][k0  ] = k0;
-            TriDofOrd[0][k0+1] = k0 + 1;
-            // (1,0,2)
-            TriDofOrd[1][k0  ] = k1;
-            TriDofOrd[1][k0+1] = k1 + 1;
-            // (2,0,1)
-            TriDofOrd[2][k0  ] = k2;
-            TriDofOrd[2][k0+1] = k2 + 1;
-            // (2,1,0)
-            TriDofOrd[3][k0  ] = k3;
-            TriDofOrd[3][k0+1] = k3 + 1;
-            // (1,2,0)
-            TriDofOrd[4][k0  ] = k4;
-            TriDofOrd[4][k0+1] = k4 + 1;
-            // (0,2,1)
-            TriDofOrd[5][k0  ] = k5;
-            TriDofOrd[5][k0+1] = k5 + 1;
-         }
-      }
-//       std::cout << "Matrix of Orientations" << std::endl;
-//       for (int row = 0; row<6; row++)
-//       {
-//           for (int col=0; col<TriDof; col++)
-//           {
-//               std::cout << TriDofOrd[row][col] << ",";
-//           }
-//           std::cout << std::endl;
-//       }
+//      for (int j = 0; j <= pm2; j++)
+//      {
+//         for (int i = 0; i + j <= pm2; i++)
+//         {
+//            int k0 = p*pm1 - (p - j)*(pm1 - j) + 2*i;
+//            int k1 = 2*pm2 - 2*i + ((2*p-3)-j)*j;
+//            int k2 = 2*pm2 - 2*j + ((2*p-3)-i)*i;
+//            int k3 = p*pm1 - 2 - 3*j - i - (i+j)*(i+j);
+//            int k4 = p*pm1 - 2 - 3*i - j - (i+j)*(i+j);
+//            int k5 = p*pm1 - (p - i)*(pm1 - i) + 2*j;
+//
+//            // (0,1,2)
+//            TriDofOrd[0][k0  ] = k0;
+//            TriDofOrd[0][k0+1] = k0 + 1;
+//            // (1,0,2)
+//            TriDofOrd[1][k0  ] = k1;
+//            TriDofOrd[1][k0+1] = k1 + 1;
+//            // (2,0,1)
+//            TriDofOrd[2][k0  ] = k2;
+//            TriDofOrd[2][k0+1] = k2 + 1;
+//            // (2,1,0)
+//            TriDofOrd[3][k0  ] = k3;
+//            TriDofOrd[3][k0+1] = k3 + 1;
+//            // (1,2,0)
+//            TriDofOrd[4][k0  ] = k4;
+//            TriDofOrd[4][k0+1] = k4 + 1;
+//            // (0,2,1)
+//            TriDofOrd[5][k0  ] = k5;
+//            TriDofOrd[5][k0+1] = k5 + 1;
+//         }
+//      }
+       
+       for (int j = 0; j < p; j++)
+       {
+          for (int i = 0; i + j < p; i++)
+          {
+             //int o = TriDof - ((pp2 - j)*(pp1 - j))/2 + i;
+             int o = TriDof - ((pp1 - j)*(p - j))/2 + i;
+             int k = p - j - i;
+             TriDofOrd[0][o] = o;  // (0,1,2)
+             TriDofOrd[1][o] = -1-(TriDof-((pp2-j)*(pp1-j))/2+k);  // (1,0,2)
+             TriDofOrd[2][o] =     TriDof-((pp2-i)*(pp1-i))/2+k;   // (2,0,1)
+             TriDofOrd[3][o] = -1-(TriDof-((pp2-k)*(pp1-k))/2+i);  // (2,1,0)
+             TriDofOrd[4][o] =     TriDof-((pp2-k)*(pp1-k))/2+j;   // (1,2,0)
+             TriDofOrd[5][o] = -1-(TriDof-((pp2-i)*(pp1-i))/2+j);  // (0,2,1)
+          }
+       }
+       std::cout << "Matrix of Orientations" << std::endl;
+       for (int row = 0; row<6; row++)
+       {
+           for (int col=0; col<TriDof; col++)
+           {
+               std::cout << TriDofOrd[row][col] << ",";
+           }
+           std::cout << std::endl;
+       }
    }
 
    if (dim >= 3)

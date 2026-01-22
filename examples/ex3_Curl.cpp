@@ -133,7 +133,8 @@ int main(int argc, char *argv[])
 
    // 5. Define a finite element space on the mesh. Here we use the Nedelec
    //    finite elements of the specified order.
-   FiniteElementCollection *fec = new DivSkew1_4DFECollection();
+   //FiniteElementCollection *fec = new DivSkew1_4DFECollection();
+   FiniteElementCollection *fec = new HCurl_FECollection(order, dim);
    FiniteElementSpace *fespace = new FiniteElementSpace(mesh, fec);
    cout << "Number of finite element unknowns: "
         << fespace->GetTrueVSize() << endl;
