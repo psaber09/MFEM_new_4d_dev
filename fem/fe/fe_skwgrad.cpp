@@ -213,6 +213,8 @@ dof2tk(dof), doftrans(p)
           {
              double w = ftop[i] + ftop[j] + ftop[k] + ftop[pm3-i-j-k];
              Nodes.IntPoint(o).Set4(ftop[i]/w, ftop[j]/w, ftop[k]/w, 0.0);
+//              const IntegrationPoint &ip = Nodes.IntPoint(o);
+//              std::cout << "Dof 1  = " << ip.x << ", " << ip.y << ", " << ip.z << ", " << ip.t << std::endl;
              dof2tk[o++] = 0;
              Nodes.IntPoint(o).Set4(ftop[i]/w, ftop[j]/w, ftop[k]/w, 0.0);
              dof2tk[o++] = 1;
@@ -261,6 +263,8 @@ dof2tk(dof), doftrans(p)
           {
              double w = ftop[i] + ftop[j] + ftop[k] + ftop[pm3-i-j-k];
              Nodes.IntPoint(o).Set4(ftop[pm3-i-j-k]/w, ftop[i]/w, ftop[j]/w, ftop[k]/w);
+              const IntegrationPoint &ip = Nodes.IntPoint(o);
+              //std::cout << "Dof 1  = " << ip.x << ", " << ip.y << ", " << ip.z << ", " << ip.t << std::endl;
              dof2tk[o++] = 4;
              Nodes.IntPoint(o).Set4(ftop[pm3-i-j-k]/w, ftop[i]/w, ftop[j]/w, ftop[k]/w);
              dof2tk[o++] = 5;
@@ -276,6 +280,8 @@ dof2tk(dof), doftrans(p)
              {
                 double w = iop[i] + iop[j] + iop[k] + iop[l] + iop[pm4-i-j-k-l];
                 Nodes.IntPoint(o).Set4(iop[i]/w, iop[j]/w, iop[k]/w, iop[l]/w);
+                const IntegrationPoint &ip = Nodes.IntPoint(o);
+                //std::cout << "Dof 1  = " << ip.x << ", " << ip.y << ", " << ip.z << ", " << ip.t << std::endl;
                 dof2tk[o++] = 0;
                 Nodes.IntPoint(o).Set4(iop[i]/w, iop[j]/w, iop[k]/w, iop[l]/w);
                 dof2tk[o++] = 1;
@@ -293,6 +299,7 @@ dof2tk(dof), doftrans(p)
     {
         const IntegrationPoint &ip = Nodes.IntPoint(q);
         //std::cout << "Dof " << q << " = " << ip.x << ", " << ip.y << ", " << ip.z << ", " << ip.t << std::endl;
+        //std::cout << "dofvec = " <<  dof2tk[q] << std::endl;
         
         //const double *nm = nk + 4*dof2nk[m];
         
@@ -945,8 +952,304 @@ dof2tk(dof), doftrans(p)
             }
             
         }// End of Interiors
-
+         
         
+//        // Start of Jay HC Test 
+//        double x1 = ip.x, y2 = ip.y, z3 = ip.z, t4 = ip.t;
+//
+//        
+//        B(o, 0) = x1*y2;
+//        B(o, 1) = -1.0*x1*x1;
+//        B(o, 2) = 0.0;
+//        B(o, 3) = 0.0;
+//
+//        o++;
+//
+//        B(o, 0) = y2*y2;
+//        B(o, 1) = -1.0*x1*y2;
+//        B(o, 2) = 0.0;
+//        B(o, 3) = 0.0;
+//
+//        o++;
+//
+//        B(o, 0) = x1*z3;
+//        B(o, 1) = 0.0;
+//        B(o, 2) = -1.0*x1*x1;
+//        B(o, 3) = 0.0;
+//
+//        o++;
+//
+//        B(o, 0) = z3*z3;
+//        B(o, 1) = 0.0;
+//        B(o, 2) = -1.0*x1*z3;
+//        B(o, 3) = 0.0;
+//
+//        o++;
+//
+//        B(o, 0) = t4*x1;
+//        B(o, 1) = 0.0;
+//        B(o, 2) = 0.0;
+//        B(o, 3) = -1.0*x1*x1;
+//
+//        o++;
+//
+//        B(o, 0) = t4*t4;
+//        B(o, 1) = 0.0;
+//        B(o, 2) = 0.0;
+//        B(o, 3) = -1.0*t4*x1;
+//
+//        o++;
+//
+//        B(o, 0) = -1.0*x1*(t4 + y2 + z3 - 1);
+//        B(o, 1) = x1*x1;
+//        B(o, 2) = x1*x1;
+//        B(o, 3) = x1*x1;
+//
+//        o++;
+//
+//        B(o, 0) = (t4 + y2 + z3 - 1)*(t4 + x1 + y2 + z3 - 1);
+//        B(o, 1) = -1.0*x1*(t4 + x1 + y2 + z3 - 1);
+//        B(o, 2) = -1.0*x1*(t4 + x1 + y2 + z3 - 1);
+//        B(o, 3) = -1.0*x1*(t4 + x1 + y2 + z3 - 1);
+//
+//        o++;
+//
+//        B(o, 0) = 0.0;
+//        B(o, 1) = y2*z3;
+//        B(o, 2) = -1.0*y2*y2;
+//        B(o, 3) = 0.0;
+//
+//        o++;
+//
+//        B(o, 0) = 0.0;
+//        B(o, 1) = z3*z3;
+//        B(o, 2) = -1.0*y2*z3;
+//        B(o, 3) = 0.0;
+//
+//        o++;
+//
+//        B(o, 0) = 0.0;
+//        B(o, 1) = t4*y2;
+//        B(o, 2) = 0.0;
+//        B(o, 3) = -1.0*y2*y2;
+//
+//        o++;
+//
+//        B(o, 0) = 0.0;
+//        B(o, 1) = t4*t4;
+//        B(o, 2) = 0.0;
+//        B(o, 3) = -1.0*t4*y2;
+//
+//        o++;
+//
+//        B(o, 0) = y2*y2;
+//        B(o, 1) = -1.0*y2*(t4 + x1 + z3 - 1);
+//        B(o, 2) = y2*y2;
+//        B(o, 3) = y2*y2;
+//
+//        o++;
+//
+//        B(o, 0) = -1.0*y2*(t4 + x1 + y2 + z3 - 1);
+//        B(o, 1) = (t4 + x1 + z3 - 1)*(t4 + x1 + y2 + z3 - 1);
+//        B(o, 2) = -1.0*y2*(t4 + x1 + y2 + z3 - 1);
+//        B(o, 3) = -1.0*y2*(t4 + x1 + y2 + z3 - 1);
+//
+//        o++;
+//
+//        B(o, 0) = 0.0;
+//        B(o, 1) = 0.0;
+//        B(o, 2) = t4*z3;
+//        B(o, 3) = -1.0*z3*z3;
+//
+//        o++;
+//
+//        B(o, 0) = 0.0;
+//        B(o, 1) = 0.0;
+//        B(o, 2) = t4*t4;
+//        B(o, 3) = -1.0*t4*z3;
+//
+//        o++;
+//
+//        B(o, 0) = z3*z3;
+//        B(o, 1) = z3*z3;
+//        B(o, 2) = -1.0*z3*(t4 + x1 + y2 - 1);
+//        B(o, 3) = z3*z3;
+//
+//        o++;
+//
+//        B(o, 0) = -1.0*z3*(t4 + x1 + y2 + z3 - 1);
+//        B(o, 1) = -1.0*z3*(t4 + x1 + y2 + z3 - 1);
+//        B(o, 2) = (t4 + x1 + y2 - 1)*(t4 + x1 + y2 + z3 - 1);
+//        B(o, 3) = -1.0*z3*(t4 + x1 + y2 + z3 - 1);
+//
+//        o++;
+//
+//        B(o, 0) = t4*t4;
+//        B(o, 1) = t4*t4;
+//        B(o, 2) = t4*t4;
+//        B(o, 3) = -1.0*t4*(x1 + y2 + z3 - 1);
+//
+//        o++;
+//
+//        B(o, 0) = -1.0*t4*(t4 + x1 + y2 + z3 - 1);
+//        B(o, 1) = -1.0*t4*(t4 + x1 + y2 + z3 - 1);
+//        B(o, 2) = -1.0*t4*(t4 + x1 + y2 + z3 - 1);
+//        B(o, 3) = (x1 + y2 + z3 - 1)*(t4 + x1 + y2 + z3 - 1);
+//
+//        o++;
+//
+//        B(o, 0) = -1.0*y2*z3;
+//        B(o, 1) = 0.0;
+//        B(o, 2) = x1*y2;
+//        B(o, 3) = 0.0;
+//
+//        o++;
+//
+//        B(o, 0) = y2*z3;
+//        B(o, 1) = -1.0*x1*z3;
+//        B(o, 2) = 0.0;
+//        B(o, 3) = 0.0;
+//
+//        o++;
+//
+//        B(o, 0) = -1.0*t4*y2;
+//        B(o, 1) = 0.0;
+//        B(o, 2) = 0.0;
+//        B(o, 3) = x1*y2;
+//
+//        o++;
+//
+//        B(o, 0) = t4*y2;
+//        B(o, 1) = -1.0*t4*x1;
+//        B(o, 2) = 0.0;
+//        B(o, 3) = 0.0;
+//
+//        o++;
+//
+//        B(o, 0) = y2*(t4 + x1 + y2 + z3 - 1) - x1*y2;
+//        B(o, 1) = -1.0*x1*y2;
+//        B(o, 2) = -1.0*x1*y2;
+//        B(o, 3) = -1.0*x1*y2;
+//
+//        o++;
+//
+//        B(o, 0) = -1.0*y2*(t4 + x1 + y2 + z3 - 1);
+//        B(o, 1) = x1*(t4 + x1 + y2 + z3 - 1);
+//        B(o, 2) = 0.0;
+//        B(o, 3) = 0.0;
+//
+//        o++;
+//
+//        B(o, 0) = -1.0*t4*z3;
+//        B(o, 1) = 0.0;
+//        B(o, 2) = 0.0;
+//        B(o, 3) = x1*z3;
+//
+//        o++;
+//
+//        B(o, 0) = t4*z3;
+//        B(o, 1) = 0.0;
+//        B(o, 2) = -1.0*t4*x1;
+//        B(o, 3) = 0.0;
+//
+//        o++;
+//
+//        B(o, 0) = z3*(t4 + x1 + y2 + z3 - 1) - x1*z3;
+//        B(o, 1) = -1.0*x1*z3;
+//        B(o, 2) = -1.0*x1*z3;
+//        B(o, 3) = -1.0*x1*z3;
+//
+//        o++;
+//
+//        B(o, 0) = -1.0*z3*(t4 + x1 + y2 + z3 - 1);
+//        B(o, 1) = 0.0;
+//        B(o, 2) = x1*(t4 + x1 + y2 + z3 - 1);
+//        B(o, 3) = 0.0;
+//
+//        o++;
+//
+//        B(o, 0) = t4*(t4 + x1 + y2 + z3 - 1) - t4*x1;
+//        B(o, 1) = -1.0*t4*x1;
+//        B(o, 2) = -1.0*t4*x1;
+//        B(o, 3) = -1.0*t4*x1;
+//
+//        o++;
+//
+//        B(o, 0) = -1.0*t4*(t4 + x1 + y2 + z3 - 1);
+//        B(o, 1) = 0.0;
+//        B(o, 2) = 0.0;
+//        B(o, 3) = x1*(t4 + x1 + y2 + z3 - 1);
+//
+//        o++;
+//
+//        B(o, 0) = 0.0;
+//        B(o, 1) = -1.0*t4*z3;
+//        B(o, 2) = 0.0;
+//        B(o, 3) = y2*z3;
+//
+//        o++;
+//
+//        B(o, 0) = 0.0;
+//        B(o, 1) = t4*z3;
+//        B(o, 2) = -1.0*t4*y2;
+//        B(o, 3) = 0.0;
+//
+//        o++;
+//
+//        B(o, 0) = -1.0*y2*z3;
+//        B(o, 1) = z3*(t4 + x1 + y2 + z3 - 1) - y2*z3;
+//        B(o, 2) = -1.0*y2*z3;
+//        B(o, 3) = -1.0*y2*z3;
+//
+//        o++;
+//
+//        B(o, 0) = 0.0;
+//        B(o, 1) = -1.0*z3*(t4 + x1 + y2 + z3 - 1);
+//        B(o, 2) = y2*(t4 + x1 + y2 + z3 - 1);
+//        B(o, 3) = 0.0;
+//
+//        o++;
+//
+//        B(o, 0) = -1.0*t4*y2;
+//        B(o, 1) = t4*(t4 + x1 + y2 + z3 - 1) - t4*y2;
+//        B(o, 2) = -1.0*t4*y2;
+//        B(o, 3) = -1.0*t4*y2;
+//
+//        o++;
+//
+//        B(o, 0) = 0.0;
+//        B(o, 1) = -1.0*t4*(t4 + x1 + y2 + z3 - 1);
+//        B(o, 2) = 0.0;
+//        B(o, 3) = y2*(t4 + x1 + y2 + z3 - 1);
+//
+//        o++;
+//
+//        B(o, 0) = -1.0*t4*z3;
+//        B(o, 1) = -1.0*t4*z3;
+//        B(o, 2) = t4*(t4 + x1 + y2 + z3 - 1) - t4*z3;
+//        B(o, 3) = -1.0*t4*z3;
+//
+//        o++;
+//
+//        B(o, 0) = 0.0;
+//        B(o, 1) = 0.0;
+//        B(o, 2) = -1.0*t4*(t4 + x1 + y2 + z3 - 1);
+//        B(o, 3) = z3*(t4 + x1 + y2 + z3 - 1);
+
+
+
+
+//        std::cout << "B Matrix" << std::endl;
+//        for (int row = 0; row < 10; row++)
+//        {
+//            for (int col = 0; col < 4; col++) {
+//                std::cout << ", " << B(row,col);
+//            }
+//            std::cout << std::endl;
+//
+//        }
+//        std::ofstream B_file("B_matrix.txt");
+//        B.PrintMatlab(B_file);
         B.Mult(tm, T.GetColumn(q));
 //        std::cout << "Vander Building" << std::endl;
 //        for (int row = 0; row < 10; row++)
@@ -960,10 +1263,9 @@ dof2tk(dof), doftrans(p)
 
         //std::cout << "End of Cycle" << std::endl;
     }
-    //std::ofstream B_file("B_matrix.txt");
-    //B.PrintMatlab(B_file);
-//    std::ofstream T_file("Vander_matrix.txt");
-//    T.PrintMatlab(T_file);
+
+    std::ofstream T_file("Vander_matrix_skwGrad.txt");
+    T.PrintMatlab(T_file);
 
 
     
@@ -997,6 +1299,12 @@ void HSkwGrad_PentatopeElement::CalcVShape(const IntegrationPoint &ip,
     
     //compute barycentric coordinates as function of ip
     std::vector<double> bary_vector{ip.x, ip.y, ip.z, ip.t, (1.0 - ip.x - ip.y - ip.z - ip.t)};
+    // Tet Dof Diag
+    //std::vector<double> bary_vector{0.554371, 0.148543, 0.148543, 0.148543, (1.0 - 0.554371 - 0.148543 - 0.148543 - 0.148543)};
+    //std::vector<double> bary_vector{0.25, 0.25, 0.25, 0.25, (1.0 - 0.25 - 0.25 - 0.25 - 0.25)};
+    // Bubble Dof
+    //std::vector<double> bary_vector{0.2, 0.2, 0.2, 0.2, (1.0 - 0.2 - 0.2 - 0.2 - 0.2)};
+
     
     // compute the gradient of the barycentric coords
     std::vector<double> gradL1{1,0,0,0};
@@ -1033,6 +1341,7 @@ void HSkwGrad_PentatopeElement::CalcVShape(const IntegrationPoint &ip,
         
     }; // end of lamda function
     
+    //std::cout << "MMCP Basis Fun ------" << std::endl;
     
     //Edges
     for(int i=0; i<p; i++)
@@ -1070,11 +1379,74 @@ void HSkwGrad_PentatopeElement::CalcVShape(const IntegrationPoint &ip,
                     
                     o++;
                     
-                    //std::cout << "u = " << u_x << ", " << u_y << ", " << u_z << ", " << u_t << std::endl;
+                    //std::cout << u_x << ", " << u_y << ", " << u_z << ", " << u_t << std::endl;
                 }
             }
         }
     }  // end of edges
+    
+//    std::cout << "This is the end" << std::endl;
+//    DenseMatrix shape2(10,4);
+//    double x = ip.x, y = ip.y, z = ip.z, t = ip.t;
+//
+//    shape2(0,0) = 1. - y - z - t;
+//    shape2(0,1) = x;
+//    shape2(0,2) = x;
+//    shape2(0,3) = x;
+//
+//    shape2(1,0) = y;
+//    shape2(1,1) = 1. - x - z - t;
+//    shape2(1,2) = y;
+//    shape2(1,3) = y;
+//
+//    shape2(2,0) = z;
+//    shape2(2,1) = z;
+//    shape2(2,2) = 1. - x - y - t;
+//    shape2(2,3) = z;
+//
+//    shape2(3,0) = t;
+//    shape2(3,1) = t;
+//    shape2(3,2) = t;
+//    shape2(3,3) = 1. - x - y - z;
+//
+//    shape2(4,0) = -y;
+//    shape2(4,1) = x;
+//    shape2(4,2) = 0.;
+//    shape2(4,3) = 0.;
+//
+//    shape2(5,0) = -z;
+//    shape2(5,1) = 0.;
+//    shape2(5,2) = x;
+//    shape2(5,3) = 0.;
+//
+//    shape2(6,0) = -t;
+//    shape2(6,1) = 0.;
+//    shape2(6,2) = 0;
+//    shape2(6,3) = x;
+//
+//    shape2(7,0) = 0.;
+//    shape2(7,1) = -z;
+//    shape2(7,2) = y;
+//    shape2(7,3) = 0.;
+//
+//    shape2(8,0) = 0.;
+//    shape2(8,1) = -t;
+//    shape2(8,2) = 0.;
+//    shape2(8,3) = y;
+//
+//    shape2(9,0) = 0.;
+//    shape2(9,1) = 0.;
+//    shape2(9,2) = -t;
+//    shape2(9,3) = z;
+//    std::cout << "Hard Code ------" << std::endl;
+//    for (int row2=0; row2 < 10 ; row2++) {
+//        for (int col2=0; col2 < 4; col2++) {
+//            std::cout << shape2(row2, col2) << " ";
+//        }
+//        std::cout << std::endl;
+//    }
+//    
+//    std::cout << "This is the end" << std::endl;
     
     //    for(int i=0; i<p;i++)
     //    {
@@ -1702,6 +2074,7 @@ void HSkwGrad_PentatopeElement::CalcVShape(const IntegrationPoint &ip,
         }
         
     }// End of Interiors
+     
 //    for (int i =0; i<dof; i++) {
 //        for (int j = 0; j<dim; j++) {
 //            std::cout << u(i,j) << ",";
@@ -1710,7 +2083,374 @@ void HSkwGrad_PentatopeElement::CalcVShape(const IntegrationPoint &ip,
 //    }
 //    std::cout << "end" << std::endl;
     
+    // Start of Jay functions check
+//    double x1 = ip.x, y2 = ip.y, z3 = ip.z, t4 = ip.t;
+//
+//    
+//    u(o,0) = x1*y2;
+//    u(o,1) = -1.0*x1*x1;
+//    u(o,2) = 0.0;
+//    u(o,3) = 0.0;
+//
+//    o++;
+//
+//    u(o,0) = y2*y2;
+//    u(o,1) = -1.0*x1*y2;
+//    u(o,2) = 0.0;
+//    u(o,3) = 0.0;
+//
+//    o++;
+//
+//    u(o,0) = x1*z3;
+//    u(o,1) = 0.0;
+//    u(o,2) = -1.0*x1*x1;
+//    u(o,3) = 0.0;
+//
+//    o++;
+//
+//    u(o,0) = z3*z3;
+//    u(o,1) = 0.0;
+//    u(o,2) = -1.0*x1*z3;
+//    u(o,3) = 0.0;
+//
+//    o++;
+//
+//    u(o,0) = t4*x1;
+//    u(o,1) = 0.0;
+//    u(o,2) = 0.0;
+//    u(o,3) = -1.0*x1*x1;
+//
+//    o++;
+//
+//    u(o,0) = t4*t4;
+//    u(o,1) = 0.0;
+//    u(o,2) = 0.0;
+//    u(o,3) = -1.0*t4*x1;
+//
+//    o++;
+//
+//    u(o,0) = -1.0*x1*(t4 + y2 + z3 - 1);
+//    u(o,1) = x1*x1;
+//    u(o,2) = x1*x1;
+//    u(o,3) = x1*x1;
+//
+//    o++;
+//
+//    u(o,0) = (t4 + y2 + z3 - 1)*(t4 + x1 + y2 + z3 - 1);
+//    u(o,1) = -1.0*x1*(t4 + x1 + y2 + z3 - 1);
+//    u(o,2) = -1.0*x1*(t4 + x1 + y2 + z3 - 1);
+//    u(o,3) = -1.0*x1*(t4 + x1 + y2 + z3 - 1);
+//
+//    o++;
+//
+//    u(o,0) = 0.0;
+//    u(o,1) = y2*z3;
+//    u(o,2) = -1.0*y2*y2;
+//    u(o,3) = 0.0;
+//
+//    o++;
+//
+//    u(o,0) = 0.0;
+//    u(o,1) = z3*z3;
+//    u(o,2) = -1.0*y2*z3;
+//    u(o,3) = 0.0;
+//
+//    o++;
+//
+//    u(o,0) = 0.0;
+//    u(o,1) = t4*y2;
+//    u(o,2) = 0.0;
+//    u(o,3) = -1.0*y2*y2;
+//
+//    o++;
+//
+//    u(o,0) = 0.0;
+//    u(o,1) = t4*t4;
+//    u(o,2) = 0.0;
+//    u(o,3) = -1.0*t4*y2;
+//
+//    o++;
+//
+//    u(o,0) = y2*y2;
+//    u(o,1) = -1.0*y2*(t4 + x1 + z3 - 1);
+//    u(o,2) = y2*y2;
+//    u(o,3) = y2*y2;
+//
+//    o++;
+//
+//    u(o,0) = -1.0*y2*(t4 + x1 + y2 + z3 - 1);
+//    u(o,1) = (t4 + x1 + z3 - 1)*(t4 + x1 + y2 + z3 - 1);
+//    u(o,2) = -1.0*y2*(t4 + x1 + y2 + z3 - 1);
+//    u(o,3) = -1.0*y2*(t4 + x1 + y2 + z3 - 1);
+//
+//    o++;
+//
+//    u(o,0) = 0.0;
+//    u(o,1) = 0.0;
+//    u(o,2) = t4*z3;
+//    u(o,3) = -1.0*z3*z3;
+//
+//    o++;
+//
+//    u(o,0) = 0.0;
+//    u(o,1) = 0.0;
+//    u(o,2) = t4*t4;
+//    u(o,3) = -1.0*t4*z3;
+//
+//    o++;
+//
+//    u(o,0) = z3*z3;
+//    u(o,1) = z3*z3;
+//    u(o,2) = -1.0*z3*(t4 + x1 + y2 - 1);
+//    u(o,3) = z3*z3;
+//
+//    o++;
+//
+//    u(o,0) = -1.0*z3*(t4 + x1 + y2 + z3 - 1);
+//    u(o,1) = -1.0*z3*(t4 + x1 + y2 + z3 - 1);
+//    u(o,2) = (t4 + x1 + y2 - 1)*(t4 + x1 + y2 + z3 - 1);
+//    u(o,3) = -1.0*z3*(t4 + x1 + y2 + z3 - 1);
+//
+//    o++;
+//
+//    u(o,0) = t4*t4;
+//    u(o,1) = t4*t4;
+//    u(o,2) = t4*t4;
+//    u(o,3) = -1.0*t4*(x1 + y2 + z3 - 1);
+//
+//    o++;
+//
+//    u(o,0) = -1.0*t4*(t4 + x1 + y2 + z3 - 1);
+//    u(o,1) = -1.0*t4*(t4 + x1 + y2 + z3 - 1);
+//    u(o,2) = -1.0*t4*(t4 + x1 + y2 + z3 - 1);
+//    u(o,3) = (x1 + y2 + z3 - 1)*(t4 + x1 + y2 + z3 - 1);
+//
+//    o++;
+//
+//    u(o,0) = -1.0*y2*z3;
+//    u(o,1) = 0.0;
+//    u(o,2) = x1*y2;
+//    u(o,3) = 0.0;
+//
+//    o++;
+//
+//    u(o,0) = y2*z3;
+//    u(o,1) = -1.0*x1*z3;
+//    u(o,2) = 0.0;
+//    u(o,3) = 0.0;
+//
+//    o++;
+//
+//    u(o,0) = -1.0*t4*y2;
+//    u(o,1) = 0.0;
+//    u(o,2) = 0.0;
+//    u(o,3) = x1*y2;
+//
+//    o++;
+//
+//    u(o,0) = t4*y2;
+//    u(o,1) = -1.0*t4*x1;
+//    u(o,2) = 0.0;
+//    u(o,3) = 0.0;
+//
+//    o++;
+//
+//    u(o,0) = y2*(t4 + x1 + y2 + z3 - 1) - x1*y2;
+//    u(o,1) = -1.0*x1*y2;
+//    u(o,2) = -1.0*x1*y2;
+//    u(o,3) = -1.0*x1*y2;
+//
+//    o++;
+//
+//    u(o,0) = -1.0*y2*(t4 + x1 + y2 + z3 - 1);
+//    u(o,1) = x1*(t4 + x1 + y2 + z3 - 1);
+//    u(o,2) = 0.0;
+//    u(o,3) = 0.0;
+//
+//    o++;
+//
+//    u(o,0) = -1.0*t4*z3;
+//    u(o,1) = 0.0;
+//    u(o,2) = 0.0;
+//    u(o,3) = x1*z3;
+//
+//    o++;
+//
+//    u(o,0) = t4*z3;
+//    u(o,1) = 0.0;
+//    u(o,2) = -1.0*t4*x1;
+//    u(o,3) = 0.0;
+//
+//    o++;
+//
+//    u(o,0) = z3*(t4 + x1 + y2 + z3 - 1) - x1*z3;
+//    u(o,1) = -1.0*x1*z3;
+//    u(o,2) = -1.0*x1*z3;
+//    u(o,3) = -1.0*x1*z3;
+//
+//    o++;
+//
+//    u(o,0) = -1.0*z3*(t4 + x1 + y2 + z3 - 1);
+//    u(o,1) = 0.0;
+//    u(o,2) = x1*(t4 + x1 + y2 + z3 - 1);
+//    u(o,3) = 0.0;
+//
+//    o++;
+//
+//    u(o,0) = t4*(t4 + x1 + y2 + z3 - 1) - t4*x1;
+//    u(o,1) = -1.0*t4*x1;
+//    u(o,2) = -1.0*t4*x1;
+//    u(o,3) = -1.0*t4*x1;
+//
+//    o++;
+//
+//    u(o,0) = -1.0*t4*(t4 + x1 + y2 + z3 - 1);
+//    u(o,1) = 0.0;
+//    u(o,2) = 0.0;
+//    u(o,3) = x1*(t4 + x1 + y2 + z3 - 1);
+//
+//    o++;
+//
+//    u(o,0) = 0.0;
+//    u(o,1) = -1.0*t4*z3;
+//    u(o,2) = 0.0;
+//    u(o,3) = y2*z3;
+//
+//    o++;
+//
+//    u(o,0) = 0.0;
+//    u(o,1) = t4*z3;
+//    u(o,2) = -1.0*t4*y2;
+//    u(o,3) = 0.0;
+//
+//    o++;
+//
+//    u(o,0) = -1.0*y2*z3;
+//    u(o,1) = z3*(t4 + x1 + y2 + z3 - 1) - y2*z3;
+//    u(o,2) = -1.0*y2*z3;
+//    u(o,3) = -1.0*y2*z3;
+//
+//    o++;
+//
+//    u(o,0) = 0.0;
+//    u(o,1) = -1.0*z3*(t4 + x1 + y2 + z3 - 1);
+//    u(o,2) = y2*(t4 + x1 + y2 + z3 - 1);
+//    u(o,3) = 0.0;
+//
+//    o++;
+//
+//    u(o,0) = -1.0*t4*y2;
+//    u(o,1) = t4*(t4 + x1 + y2 + z3 - 1) - t4*y2;
+//    u(o,2) = -1.0*t4*y2;
+//    u(o,3) = -1.0*t4*y2;
+//
+//    o++;
+//
+//    u(o,0) = 0.0;
+//    u(o,1) = -1.0*t4*(t4 + x1 + y2 + z3 - 1);
+//    u(o,2) = 0.0;
+//    u(o,3) = y2*(t4 + x1 + y2 + z3 - 1);
+//
+//    o++;
+//
+//    u(o,0) = -1.0*t4*z3;
+//    u(o,1) = -1.0*t4*z3;
+//    u(o,2) = t4*(t4 + x1 + y2 + z3 - 1) - t4*z3;
+//    u(o,3) = -1.0*t4*z3;
+//
+//    o++;
+//
+//    u(o,0) = 0.0;
+//    u(o,1) = 0.0;
+//    u(o,2) = -1.0*t4*(t4 + x1 + y2 + z3 - 1);
+//    u(o,3) = z3*(t4 + x1 + y2 + z3 - 1);
+//
+//    o++;
+
+
+    
+    
     Ti.Mult(u, shape);
+
+    
+    
+//    DenseMatrix u_x(num_dof,1);
+//    DenseMatrix u_y(num_dof,1);
+//    DenseMatrix u_z(num_dof,1);
+//    DenseMatrix u_t(num_dof,1);
+//
+//    DenseMatrix Test_outx(num_dof,1);
+//    DenseMatrix Test_outy(num_dof,1);
+//    DenseMatrix Test_outz(num_dof,1);
+//    DenseMatrix Test_outt(num_dof,1);
+//
+//    for (int row=0; row<num_dof; row++) {
+//        u_x(row,0) = u(row,0);
+//        u_y(row,0) = u(row,1);
+//        u_z(row,0) = u(row,2);
+//        u_t(row,0) = u(row,3);
+//
+//    }
+//    
+//    
+//    Ti.Mult(u_x, Test_outx);
+//    Ti.Mult(u_y, Test_outy);
+//    Ti.Mult(u_z, Test_outz);
+//    Ti.Mult(u_t, Test_outt);
+//    
+//    double ux_sum = 0;
+//    double uy_sum = 0;
+//    double uz_sum = 0;
+//    double ut_sum = 0;
+//    std::vector<double> n1 = {-1,1,0,0};
+//    //double dot_u_n = 0;
+//    
+//    for (int dnum = 0; dnum<num_dof; dnum++)
+//    {
+//        ux_sum += Test_outx(dnum,0);
+//        uy_sum += Test_outy(dnum,0);
+//        uz_sum += Test_outz(dnum,0);
+//        ut_sum += Test_outt(dnum,0);
+//        //dot_u_n += Test_outx(dnum,0)*n1[0] + Test_outy(dnum,0)*n1[1] + Test_outz(dnum,0)*n1[2] + Test_outt(dnum,0)*n1[3];
+//    }
+//    
+//    std::vector<double> u_sum = {ux_sum, uy_sum, uz_sum, ut_sum};
+//    double dot_u_n = u_sum[0]*n1[0] + u_sum[1]*n1[1] + u_sum[2]*n1[2] + u_sum[3]*n1[3];
+//    
+//    std::cout << "dot_u_n = " << dot_u_n << std::endl;
+
+
+//    for (int row=0; row<num_dof; row++) 
+//    {
+//        std::cout << "Test_out = " << Test_outx(row,0) << std::endl;
+//    }
+    
+    
+    
+//    double sum[1];
+//    for (int sum_i = 0; sum_i<1; sum_i++) {
+//        sum[sum_i] = 0;
+//    }
+//    
+////    for (int col=0; col<4; col++)
+////    {
+////        for (int row =0; row<num_dof; row++)
+////        {
+////            sum[col] += shape(row,col);
+////        }
+////    }
+//    
+//    for (int row =0; row<num_dof; row++)
+//    {
+//        sum[0] += sqrt( shape(row,0)*shape(row,0) + shape(row,1)*shape(row,1) + shape(row,2)*shape(row,2) + shape(row,3)*shape(row,3) );
+//    }
+//
+//    
+//    for (int sum_i = 0; sum_i<1; sum_i++) {
+//        std::cout << "sum " << sum_i << " = " << sum[sum_i] << std::endl;
+//    }
+    
+    
 //    double x = ip.x, y = ip.y, z = ip.z, t = ip.t;
 //
 
@@ -1732,9 +2472,9 @@ void HSkwGrad_PentatopeElement::CalcVShape(const IntegrationPoint &ip,
 
     //logfile.close();
     
-//           std::ofstream A_file("Shape_matrix.txt");
-//    
-//           shape.PrintMatlab(A_file);
+           std::ofstream A_file("SkwGrad_Shape_matrix.txt");
+    
+           shape.PrintMatlab(A_file);
 
     
 }

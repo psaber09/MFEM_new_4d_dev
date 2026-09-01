@@ -2465,122 +2465,200 @@ void DerivativeIntegrator::AssembleElementMatrix2 (
    }
 }*/
 
+//void CurlCurlIntegrator::AssembleElementMatrix
+//( const FiniteElement &el, ElementTransformation &Trans,
+//  DenseMatrix &elmat )
+//{
+//   int nd = el.GetDof();
+//   int dim = el.GetDim();
+//   int dimc = (dim == 3) ? 3 : 1;
+//   if (dim==4) { dimc = 4; }
+//   double w;
+//
+//#ifdef MFEM_THREAD_SAFE
+//   Vector D;
+//   DenseMatrix curlshape(nd,dimc), curlshape_dFt(nd,dimc), M;
+//#else
+//   curlshape.SetSize(nd,dimc);
+//   curlshape_dFt.SetSize(nd,dimc);
+//#endif
+//   elmat.SetSize(nd);
+//   if (MQ) { M.SetSize(dimc); }
+//   if (DQ) { D.SetSize(dimc); }
+//
+//   const IntegrationRule *ir = IntRule;
+//   if (ir == NULL)
+//   {
+//      int order;
+//      if (el.Space() == FunctionSpace::Pk)
+//      {
+//         order = 2*el.GetOrder() - 2;
+//      }
+//      else
+//      {
+//         order = 2*el.GetOrder();
+//      }
+//
+//      ir = &IntRules.Get(el.GetGeomType(), order);
+//   }
+//
+//   elmat = 0.0;
+//   for (int i = 0; i < ir->GetNPoints(); i++)
+//   {
+//      const IntegrationPoint &ip = ir->IntPoint(i);
+//
+//      Trans.SetIntPoint (&ip);
+//
+//      if (dim ==4)
+//      {
+//          
+//
+//          el.CalcCurlShape(ip, curlshape);
+//
+//          MultABt(curlshape, Trans.Jacobian(), curlshape_dFt);
+//
+//          curlshape_dFt *= (1.0 / Trans.Weight());
+//
+//          w = ip.weight * fabs(Trans.Weight());
+////         DenseMatrix tSh(4,4);
+////         DenseMatrix trShTemp(4,4);
+////
+////         DenseMatrix J = Trans.Jacobian();
+////         DenseMatrix invJ(4,4); CalcInverse(J, invJ);
+////         DenseMatrix invJtr(invJ); invJtr.Transpose();
+////
+////         el.CalcCurlShape(ip, curlshape);
+////         for (int dof=0; dof<nd; dof++)
+////         {
+////            tSh = 0.; trShTemp = 0.;
+////            tSh(0,1) =  curlshape(dof,0); tSh(0,2) =  curlshape(dof,1);
+////            tSh(0,3) =  curlshape(dof,2);
+////            tSh(1,0) = -curlshape(dof,0);
+////            tSh(1,2) =  curlshape(dof,3); tSh(1,3) =  curlshape(dof,4);
+////            tSh(2,0) = -curlshape(dof,1); tSh(2,1) = -curlshape(dof,3);
+////            tSh(2,3) =  curlshape(dof,5);
+////            tSh(3,0) = -curlshape(dof,2); tSh(3,1) = -curlshape(dof,4);
+////            tSh(3,2) = -curlshape(dof,5);
+////
+////            Mult(tSh, invJ, trShTemp);
+////            Mult(invJtr, trShTemp, tSh);
+////
+////            curlshape_dFt(dof,0) = tSh(0,1);
+////            curlshape_dFt(dof,1) = tSh(0,2);
+////            curlshape_dFt(dof,2) = tSh(0,3);
+////            curlshape_dFt(dof,3) = tSh(1,2);
+////            curlshape_dFt(dof,4) = tSh(1,3);
+////            curlshape_dFt(dof,5) = tSh(2,3);
+////         }
+////          auto TransWeight = Trans.Weight();
+////         w = ip.weight * Trans.Weight();
+//      }
+//      else if ( dim == 3 )
+//      {
+//         el.CalcCurlShape(ip, curlshape);
+//         MultABt(curlshape, Trans.Jacobian(), curlshape_dFt);
+//
+//         w = ip.weight / Trans.Weight();
+//      }
+//      else
+//      {
+//         el.CalcCurlShape(ip, curlshape_dFt);
+//
+//         w = ip.weight / Trans.Weight();
+//      }
+//
+//      if (MQ)
+//      {
+//         MQ->Eval(M, Trans, ip);
+//         M *= w;
+//         Mult(curlshape_dFt, M, curlshape);
+//         AddMultABt(curlshape, curlshape_dFt, elmat);
+//      }
+//      else if (DQ)
+//      {
+//         DQ->Eval(D, Trans, ip);
+//         D *= w;
+//         AddMultADAt(curlshape_dFt, D, elmat);
+//      }
+//      else if (Q)
+//      {
+//         w *= Q->Eval(Trans, ip);
+//         AddMult_a_AAt(w, curlshape_dFt, elmat);
+//      }
+//      else
+//      {
+//         AddMult_a_AAt(w, curlshape_dFt, elmat);
+//      }
+//   }
+//}
+
 void CurlCurlIntegrator::AssembleElementMatrix
 ( const FiniteElement &el, ElementTransformation &Trans,
   DenseMatrix &elmat )
 {
-   int nd = el.GetDof();
-   int dim = el.GetDim();
-   int dimc = (dim == 3) ? 3 : 1;
-   if (dim==4) { dimc = 6; }
-   double w;
+    int nd = el.GetDof();
+    int dim = el.GetDim();
+    real_t w;
 
-#ifdef MFEM_THREAD_SAFE
-   Vector D;
-   DenseMatrix curlshape(nd,dimc), curlshape_dFt(nd,dimc), M;
-#else
-   curlshape.SetSize(nd,dimc);
-   curlshape_dFt.SetSize(nd,dimc);
-#endif
-   elmat.SetSize(nd);
-   if (MQ) { M.SetSize(dimc); }
-   if (DQ) { D.SetSize(dimc); }
+    curlshape.SetSize(nd,dim);
+    curlshape_dFt.SetSize(nd,dim);
+    
+    DenseMatrix curlshape_dFt_transpose(dim,nd);
 
-   const IntegrationRule *ir = IntRule;
-   if (ir == NULL)
-   {
-      int order;
-      if (el.Space() == FunctionSpace::Pk)
-      {
-         order = 2*el.GetOrder() - 2;
-      }
-      else
-      {
-         order = 2*el.GetOrder();
-      }
 
-      ir = &IntRules.Get(el.GetGeomType(), order);
-   }
+    elmat.SetSize(nd);
 
-   elmat = 0.0;
-   for (int i = 0; i < ir->GetNPoints(); i++)
-   {
-      const IntegrationPoint &ip = ir->IntPoint(i);
+    const IntegrationRule *ir = IntRule;
+    if (ir == NULL)
+    {
+       int order = 2*el.GetOrder()+2;
 
-      Trans.SetIntPoint (&ip);
+       ir = &IntRules.Get(el.GetGeomType(), order);
+    }
 
-      if (dim ==4)
-      {
-         DenseMatrix tSh(4,4);
-         DenseMatrix trShTemp(4,4);
+    elmat = 0.0;
+    for (int i = 0; i < ir->GetNPoints(); i++)
+    {
+       const IntegrationPoint &ip = ir->IntPoint(i);
 
-         DenseMatrix J = Trans.Jacobian();
-         DenseMatrix invJ(4,4); CalcInverse(J, invJ);
-         DenseMatrix invJtr(invJ); invJtr.Transpose();
+       Trans.SetIntPoint (&ip);
 
-         el.CalcCurlShape(ip, curlshape);
-         for (int dof=0; dof<nd; dof++)
-         {
-            tSh = 0.; trShTemp = 0.;
-            tSh(0,1) =  curlshape(dof,0); tSh(0,2) =  curlshape(dof,1);
-            tSh(0,3) =  curlshape(dof,2);
-            tSh(1,0) = -curlshape(dof,0);
-            tSh(1,2) =  curlshape(dof,3); tSh(1,3) =  curlshape(dof,4);
-            tSh(2,0) = -curlshape(dof,1); tSh(2,1) = -curlshape(dof,3);
-            tSh(2,3) =  curlshape(dof,5);
-            tSh(3,0) = -curlshape(dof,2); tSh(3,1) = -curlshape(dof,4);
-            tSh(3,2) = -curlshape(dof,5);
+       el.CalcCurlShape(ip, curlshape);
+        
+//        DenseMatrix adjJ = Trans.AdjugateJacobian();
+//        DenseMatrix adjJinv(4,4); CalcInverse(adjJ, adjJinv);
+        DenseMatrix TempJ = Trans.Jacobian();
+       MultABt(curlshape, Trans.Jacobian(), curlshape_dFt);
+//       MultABt(Trans.Jacobian(), curlshape, curlshape_dFt_transpose);
+//        
+//        for (int row = 0; row<dim; row++) 
+//        {
+//            for (int col = 0; col<nd; col++) 
+//            {
+//                curlshape_dFt(col,row) = curlshape_dFt_transpose(row,col);
+//            }
+//        }
 
-            Mult(tSh, invJ, trShTemp);
-            Mult(invJtr, trShTemp, tSh);
 
-            curlshape_dFt(dof,0) = tSh(0,1);
-            curlshape_dFt(dof,1) = tSh(0,2);
-            curlshape_dFt(dof,2) = tSh(0,3);
-            curlshape_dFt(dof,3) = tSh(1,2);
-            curlshape_dFt(dof,4) = tSh(1,3);
-            curlshape_dFt(dof,5) = tSh(2,3);
-         }
-          auto TransWeight = Trans.Weight();
-         w = ip.weight * Trans.Weight();
-      }
-      else if ( dim == 3 )
-      {
-         el.CalcCurlShape(ip, curlshape);
-         MultABt(curlshape, Trans.Jacobian(), curlshape_dFt);
+       curlshape_dFt *= (1.0 / Trans.Weight());
 
-         w = ip.weight / Trans.Weight();
-      }
-      else
-      {
-         el.CalcCurlShape(ip, curlshape_dFt);
+       w = ip.weight * fabs(Trans.Weight());
 
-         w = ip.weight / Trans.Weight();
-      }
+       if (Q)
+       {
+          w *= Q->Eval(Trans, ip);
+          w = (1./1.)*w; // 2.0 factor to account for skew-sym. that is not accounted for by computation using 6-independent components.
 
-      if (MQ)
-      {
-         MQ->Eval(M, Trans, ip);
-         M *= w;
-         Mult(curlshape_dFt, M, curlshape);
-         AddMultABt(curlshape, curlshape_dFt, elmat);
-      }
-      else if (DQ)
-      {
-         DQ->Eval(D, Trans, ip);
-         D *= w;
-         AddMultADAt(curlshape_dFt, D, elmat);
-      }
-      else if (Q)
-      {
-         w *= Q->Eval(Trans, ip);
-         AddMult_a_AAt(w, curlshape_dFt, elmat);
-      }
-      else
-      {
-         AddMult_a_AAt(w, curlshape_dFt, elmat);
-      }
-   }
+       }
+
+       AddMult_a_AAt(w, curlshape_dFt, elmat);
+
+    }
+    //std::cout << "Start of New Elmat Curl Int ------" << std::endl;
+//    real_t thres = 1e-16;
+//    elmat.Threshold(thres);
+//    elmat.PrintMatlab(std::cout);
+//    std::cout << std::endl;
 }
 
 void SkwGradSkwGradIntegrator::AssembleElementMatrix
@@ -2716,7 +2794,7 @@ void SkwGradSkwGradIntegrator::AssembleElementMatrix
       else if (Q)
       {
          w *= Q->Eval(Trans, ip);
-         w = 2.0*w;
+         w = 2.0*w; // 2.0 factor to account for skew-sym. that is not accounted for by computation using 6-independent components. 
          AddMult_a_AAt(w, SkwGradshape_dFt, elmat);
       }
       else

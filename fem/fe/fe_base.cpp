@@ -1125,10 +1125,25 @@ void VectorFiniteElement::CalcVShape_DivSkew (
 
    if (vshape.Width()!=dim*dim) { vshape.SetSize(dof,dim*dim); }
 
-   CalcVShape(Trans.GetIntPoint(), vshape);
+   //CalcVShape(Trans.GetIntPoint(), vshape);
 
    CalcInverse(J, Jinv);
    DenseMatrix invJtr(Jinv); invJtr.Transpose();
+    
+   //IntegrationPoint transip;
+//   Vector transip;
+   IntegrationPoint true_ip = Trans.GetIntPoint();
+//   Trans.Transform(Trans.GetIntPoint(), transip);
+//    true_ip.x = transip[0];
+//    true_ip.y = transip[1];
+//    true_ip.z = transip[2];
+//    true_ip.t = transip[3];
+    //std::cout << "Int pt = " << true_ip.x << ", " << true_ip.y << ", " << true_ip.z << ", " << true_ip.t << std::endl;
+
+//
+//
+//   CalcVShape(true_ip, vshape);
+
 
    CalcVShape(Trans.GetIntPoint(), vshape);
 
@@ -1151,8 +1166,52 @@ void VectorFiniteElement::CalcVShape_DivSkew (
       //       {
       //          shape(o,dim*ik+jk) = mat(ik,jk);
       //       }
-
-
+//       std::cout << "Start of DivSkew Matrix Check VFEM" << std::endl;
+//       std::cout << vshape(0,0) << ", ";
+//       std::cout << vshape(0,1) << ", ";
+//       std::cout << vshape(0,2) << ", ";
+//       std::cout << vshape(0,3) << ", " << std::endl;
+//       
+//       std::cout << vshape(0,4) << ", ";
+//       std::cout << vshape(0,5) << ", ";
+//       std::cout << vshape(0,6) << ", ";
+//       std::cout << vshape(0,7) << ", " << std::endl;
+//       
+//       std::cout << vshape(0,8) << ", ";
+//       std::cout << vshape(0,9) << ", ";
+//       std::cout << vshape(0,10) << ", ";
+//       std::cout << vshape(0,11) << ", " << std::endl;
+//       
+//       std::cout << vshape(0,12) << ", ";
+//       std::cout << vshape(0,13) << ", ";
+//       std::cout << vshape(0,14) << ", ";
+//       std::cout << vshape(0,15) << ", " << std::endl;
+//       std::cout << std::endl;
+       
+//       std::cout << "Start of DivSkew Matrix Check VFEM" << std::endl;
+//       std::cout << vshape(o,0) << ", ";
+//       std::cout << vshape(o,1) << ", ";
+//       std::cout << vshape(o,2) << ", ";
+//       std::cout << vshape(o,3) << ", " << std::endl;
+//       
+//       std::cout << vshape(o,4) << ", ";
+//       std::cout << vshape(o,5) << ", ";
+//       std::cout << vshape(o,6) << ", ";
+//       std::cout << vshape(o,7) << ", " << std::endl;
+//       
+//       std::cout << vshape(o,8) << ", ";
+//       std::cout << vshape(o,9) << ", ";
+//       std::cout << vshape(o,10) << ", ";
+//       std::cout << vshape(o,11) << ", " << std::endl;
+//       
+//       std::cout << vshape(o,12) << ", ";
+//       std::cout << vshape(o,13) << ", ";
+//       std::cout << vshape(o,14) << ", ";
+//       std::cout << vshape(o,15) << ", " << std::endl;
+//       std::cout << std::endl;
+       
+       
+       //Old Proxy
       mat(0,0) =  0.0;            mat(0,1) =  vshape(o,11);
       mat(0,2) =  vshape(o,13); mat(0,3) =  vshape(o,6);
       mat(1,0) =  vshape(o,14); mat(1,1) =  0.0;
@@ -1161,10 +1220,41 @@ void VectorFiniteElement::CalcVShape_DivSkew (
       mat(2,3) =  vshape(o,1);
       mat(3,0) =  vshape(o,9);  mat(3,1) =  vshape(o,2);
       mat(3,2) =  vshape(o,4);  mat(3,3) =  0.0;
+       
+       // New Proxy
+//       mat(0,0) =  0.0;          mat(0,1) =  vshape(o,1); mat(0,2) =  vshape(o,2); mat(0,3) =  vshape(o,3);
+//       mat(1,0) =  vshape(o,4);  mat(1,1) =  0.0; mat(1,2) =  vshape(o,6);  mat(1,3) =  vshape(o,7);
+//       mat(2,0) =  vshape(o,8);  mat(2,1) =  vshape(o,9); mat(2,2) =  0.0; mat(2,3) =  vshape(o,11);
+//       mat(3,0) =  vshape(o,12); mat(3,1) =  vshape(o,13); mat(3,2) =  vshape(o,14);  mat(3,3) =  0.0;
+       
+//              std::cout << "Start of DivSkew Matrix Post Proxy" << std::endl;
+//              std::cout << mat(0,0) << ", ";
+//              std::cout << mat(0,1) << ", ";
+//              std::cout << mat(0,2) << ", ";
+//              std::cout << mat(0,3) << ", " << std::endl;
+//       
+//              std::cout << mat(1,0) << ", ";
+//              std::cout << mat(1,1) << ", ";
+//              std::cout << mat(1,2) << ", ";
+//              std::cout << mat(1,3) << ", " << std::endl;
+//       
+//              std::cout << mat(2,0) << ", ";
+//              std::cout << mat(2,1) << ", ";
+//              std::cout << mat(2,2) << ", ";
+//              std::cout << mat(2,3) << ", " << std::endl;
+//       
+//              std::cout << mat(3,0) << ", ";
+//              std::cout << mat(3,1) << ", ";
+//              std::cout << mat(3,2) << ", ";
+//              std::cout << mat(3,3) << ", " << std::endl;
+//              std::cout << std::endl;
 
       Mult(mat, Jinv, tempMat);
       Mult(invJtr, tempMat, mat);
+       
+    
 
+        //old proxy
       shape(o,0) =  0.0;      shape(o,1) =  mat(2,3); shape(o,2) =  mat(3,1);
       shape(o,3) =  mat(1,2);
       shape(o,4) =  mat(3,2); shape(o,5) =  0.0;      shape(o,6) =  mat(0,3);
@@ -1173,8 +1263,265 @@ void VectorFiniteElement::CalcVShape_DivSkew (
       shape(o,11) = mat(0,1);
       shape(o,12) = mat(2,1); shape(o,13) = mat(0,2); shape(o,14) = mat(1,0);
       shape(o,15) = 0.0;
+       
+//       // New Proxy
+//       shape(o,0) =  0.0;      shape(o,1) =  mat(0,1); shape(o,2) =  mat(0,2); shape(o,3) =  mat(0,3);
+//       shape(o,4) =  mat(1,0); shape(o,5) =  0.0;      shape(o,6) =  mat(1,2); shape(o,7) =  mat(1,3);
+//       shape(o,8) =  mat(2,0); shape(o,9) =  mat(2,1); shape(o,10) = 0.0;      shape(o,11) = mat(2,3);
+//       shape(o,12) = mat(3,0); shape(o,13) = mat(3,1); shape(o,14) = mat(3,2); shape(o,15) = 0.0;
+       
+//       std::cout << "Start of DivSkew Matrix Check Post Pull Proxy Again " << std::endl;
+//       std::cout << shape(o,0) << ", ";
+//       std::cout << shape(o,1) << ", ";
+//       std::cout << shape(o,2) << ", ";
+//       std::cout << shape(o,3) << ", " << std::endl;
+//       
+//       std::cout << shape(o,4) << ", ";
+//       std::cout << shape(o,5) << ", ";
+//       std::cout << shape(o,6) << ", ";
+//       std::cout << shape(o,7) << ", " << std::endl;
+//       
+//       std::cout << shape(o,8) << ", ";
+//       std::cout << shape(o,9) << ", ";
+//       std::cout << shape(o,10) << ", ";
+//       std::cout << shape(o,11) << ", " << std::endl;
+//       
+//       std::cout << shape(o,12) << ", ";
+//       std::cout << shape(o,13) << ", ";
+//       std::cout << shape(o,14) << ", ";
+//       std::cout << shape(o,15) << ", " << std::endl;
+//       std::cout << std::endl;
+
+//          std::cout << "Start of DivSkew Matrix Check Post Pull Proxy Again " << std::endl;
+//          std::cout << shape(0,0) << ", ";
+//          std::cout << shape(0,1) << ", ";
+//          std::cout << shape(0,2) << ", ";
+//          std::cout << shape(0,3) << ", " << std::endl;
+//
+//          std::cout << shape(0,4) << ", ";
+//          std::cout << shape(0,5) << ", ";
+//          std::cout << shape(0,6) << ", ";
+//          std::cout << shape(0,7) << ", " << std::endl;
+//
+//          std::cout << shape(0,8) << ", ";
+//          std::cout << shape(0,9) << ", ";
+//          std::cout << shape(0,10) << ", ";
+//          std::cout << shape(0,11) << ", " << std::endl;
+//
+//          std::cout << shape(0,12) << ", ";
+//          std::cout << shape(0,13) << ", ";
+//          std::cout << shape(0,14) << ", ";
+//          std::cout << shape(0,15) << ", " << std::endl;
+//          std::cout << std::endl;
    }
 }
+
+void VectorFiniteElement::CalcVShape_Hcurl (
+   ElementTransformation &Trans, DenseMatrix &shape) const
+{
+   if (dim!=4) { return; }
+
+   MFEM_ASSERT(map_type == H_DIV_SKEW, "");
+   const DenseMatrix &J = Trans.Jacobian();
+   DenseMatrix Jinv; // Add By MMCP
+#ifdef MFEM_THREAD_SAFE
+   DenseMatrix vshape(dof, dim*dim);
+   DenseMatrix Jinv(J.Width(), J.Height());
+#else
+   Jinv.SetSize(J.Width(), J.Height());
+#endif
+
+   if (vshape.Width()!=dim*dim) { vshape.SetSize(dof,dim*dim); }
+
+   //CalcVShape(Trans.GetIntPoint(), vshape);
+
+   CalcInverse(J, Jinv);
+   DenseMatrix invJtr(Jinv); invJtr.Transpose();
+    
+   //IntegrationPoint transip;
+//   Vector transip;
+   IntegrationPoint true_ip = Trans.GetIntPoint();
+//   Trans.Transform(Trans.GetIntPoint(), transip);
+//    true_ip.x = transip[0];
+//    true_ip.y = transip[1];
+//    true_ip.z = transip[2];
+//    true_ip.t = transip[3];
+    //std::cout << "Int pt = " << true_ip.x << ", " << true_ip.y << ", " << true_ip.z << ", " << true_ip.t << std::endl;
+
+//
+//
+//   CalcVShape(true_ip, vshape);
+
+
+   CalcVShape(Trans.GetIntPoint(), vshape);
+
+   DenseMatrix mat(dim,dim); mat = 0.0;
+   DenseMatrix tempMat(dim,dim);
+
+   for (int o=0; o<dof; o++)
+   {
+      //    for(int ik=0; ik<dim; ik++)
+      //       for(int jk=0; jk<dim; jk++)
+      //       {
+      //          mat(ik,jk) = vshape(o,dim*ik+jk);
+      //       }
+      //
+      //    Mult(mat, Jinv, tempMat);
+      //    Mult(invJtr, tempMat, mat);
+      //
+      //    for(int ik=0; ik<dim; ik++)
+      //       for(int jk=0; jk<dim; jk++)
+      //       {
+      //          shape(o,dim*ik+jk) = mat(ik,jk);
+      //       }
+//       std::cout << "Start of DivSkew Matrix Check VFEM" << std::endl;
+//       std::cout << vshape(0,0) << ", ";
+//       std::cout << vshape(0,1) << ", ";
+//       std::cout << vshape(0,2) << ", ";
+//       std::cout << vshape(0,3) << ", " << std::endl;
+//
+//       std::cout << vshape(0,4) << ", ";
+//       std::cout << vshape(0,5) << ", ";
+//       std::cout << vshape(0,6) << ", ";
+//       std::cout << vshape(0,7) << ", " << std::endl;
+//
+//       std::cout << vshape(0,8) << ", ";
+//       std::cout << vshape(0,9) << ", ";
+//       std::cout << vshape(0,10) << ", ";
+//       std::cout << vshape(0,11) << ", " << std::endl;
+//
+//       std::cout << vshape(0,12) << ", ";
+//       std::cout << vshape(0,13) << ", ";
+//       std::cout << vshape(0,14) << ", ";
+//       std::cout << vshape(0,15) << ", " << std::endl;
+//       std::cout << std::endl;
+       
+//       std::cout << "Start of DivSkew Matrix Check VFEM" << std::endl;
+//       std::cout << vshape(o,0) << ", ";
+//       std::cout << vshape(o,1) << ", ";
+//       std::cout << vshape(o,2) << ", ";
+//       std::cout << vshape(o,3) << ", " << std::endl;
+//
+//       std::cout << vshape(o,4) << ", ";
+//       std::cout << vshape(o,5) << ", ";
+//       std::cout << vshape(o,6) << ", ";
+//       std::cout << vshape(o,7) << ", " << std::endl;
+//
+//       std::cout << vshape(o,8) << ", ";
+//       std::cout << vshape(o,9) << ", ";
+//       std::cout << vshape(o,10) << ", ";
+//       std::cout << vshape(o,11) << ", " << std::endl;
+//
+//       std::cout << vshape(o,12) << ", ";
+//       std::cout << vshape(o,13) << ", ";
+//       std::cout << vshape(o,14) << ", ";
+//       std::cout << vshape(o,15) << ", " << std::endl;
+//       std::cout << std::endl;
+       
+       
+      // Old Proxy
+//      mat(0,0) =  0.0;            mat(0,1) =  vshape(o,11);
+//      mat(0,2) =  vshape(o,13); mat(0,3) =  vshape(o,6);
+//      mat(1,0) =  vshape(o,14); mat(1,1) =  0.0;
+//      mat(1,2) =  vshape(o,3);  mat(1,3) =  vshape(o,8);
+//      mat(2,0) =  vshape(o,7);  mat(2,1) =  vshape(o,12); mat(2,2) =  0.0;
+//      mat(2,3) =  vshape(o,1);
+//      mat(3,0) =  vshape(o,9);  mat(3,1) =  vshape(o,2);
+//      mat(3,2) =  vshape(o,4);  mat(3,3) =  0.0;
+
+       // New Proxy
+       mat(0,0) =  0.0;          mat(0,1) =  vshape(o,1); mat(0,2) =  vshape(o,2); mat(0,3) =  vshape(o,3);
+       mat(1,0) =  vshape(o,4);  mat(1,1) =  0.0; mat(1,2) =  vshape(o,6);  mat(1,3) =  vshape(o,7);
+       mat(2,0) =  vshape(o,8);  mat(2,1) =  vshape(o,9); mat(2,2) =  0.0; mat(2,3) =  vshape(o,11);
+       mat(3,0) =  vshape(o,12); mat(3,1) =  vshape(o,13); mat(3,2) =  vshape(o,14);  mat(3,3) =  0.0;
+       
+//              std::cout << "Start of DivSkew Matrix Post Proxy" << std::endl;
+//              std::cout << mat(0,0) << ", ";
+//              std::cout << mat(0,1) << ", ";
+//              std::cout << mat(0,2) << ", ";
+//              std::cout << mat(0,3) << ", " << std::endl;
+//
+//              std::cout << mat(1,0) << ", ";
+//              std::cout << mat(1,1) << ", ";
+//              std::cout << mat(1,2) << ", ";
+//              std::cout << mat(1,3) << ", " << std::endl;
+//
+//              std::cout << mat(2,0) << ", ";
+//              std::cout << mat(2,1) << ", ";
+//              std::cout << mat(2,2) << ", ";
+//              std::cout << mat(2,3) << ", " << std::endl;
+//
+//              std::cout << mat(3,0) << ", ";
+//              std::cout << mat(3,1) << ", ";
+//              std::cout << mat(3,2) << ", ";
+//              std::cout << mat(3,3) << ", " << std::endl;
+//              std::cout << std::endl;
+
+      Mult(mat, Jinv, tempMat);
+      Mult(invJtr, tempMat, mat);
+
+        //old proxy
+//      shape(o,0) =  0.0;      shape(o,1) =  mat(2,3); shape(o,2) =  mat(3,1);
+//      shape(o,3) =  mat(1,2);
+//      shape(o,4) =  mat(3,2); shape(o,5) =  0.0;      shape(o,6) =  mat(0,3);
+//      shape(o,7) =  mat(2,0);
+//      shape(o,8) =  mat(1,3); shape(o,9) =  mat(3,0); shape(o,10) = 0.0;
+//      shape(o,11) = mat(0,1);
+//      shape(o,12) = mat(2,1); shape(o,13) = mat(0,2); shape(o,14) = mat(1,0);
+//      shape(o,15) = 0.0;
+       
+//       // New Proxy
+       shape(o,0) =  0.0;      shape(o,1) =  mat(0,1); shape(o,2) =  mat(0,2); shape(o,3) =  mat(0,3);
+       shape(o,4) =  mat(1,0); shape(o,5) =  0.0;      shape(o,6) =  mat(1,2); shape(o,7) =  mat(1,3);
+       shape(o,8) =  mat(2,0); shape(o,9) =  mat(2,1); shape(o,10) = 0.0;      shape(o,11) = mat(2,3);
+       shape(o,12) = mat(3,0); shape(o,13) = mat(3,1); shape(o,14) = mat(3,2); shape(o,15) = 0.0;
+       
+//       std::cout << "Start of DivSkew Matrix Check Post Pull Proxy Again " << std::endl;
+//       std::cout << shape(o,0) << ", ";
+//       std::cout << shape(o,1) << ", ";
+//       std::cout << shape(o,2) << ", ";
+//       std::cout << shape(o,3) << ", " << std::endl;
+//
+//       std::cout << shape(o,4) << ", ";
+//       std::cout << shape(o,5) << ", ";
+//       std::cout << shape(o,6) << ", ";
+//       std::cout << shape(o,7) << ", " << std::endl;
+//
+//       std::cout << shape(o,8) << ", ";
+//       std::cout << shape(o,9) << ", ";
+//       std::cout << shape(o,10) << ", ";
+//       std::cout << shape(o,11) << ", " << std::endl;
+//
+//       std::cout << shape(o,12) << ", ";
+//       std::cout << shape(o,13) << ", ";
+//       std::cout << shape(o,14) << ", ";
+//       std::cout << shape(o,15) << ", " << std::endl;
+//       std::cout << std::endl;
+
+//          std::cout << "Start of DivSkew Matrix Check Post Pull Proxy Again " << std::endl;
+//          std::cout << shape(0,0) << ", ";
+//          std::cout << shape(0,1) << ", ";
+//          std::cout << shape(0,2) << ", ";
+//          std::cout << shape(0,3) << ", " << std::endl;
+//
+//          std::cout << shape(0,4) << ", ";
+//          std::cout << shape(0,5) << ", ";
+//          std::cout << shape(0,6) << ", ";
+//          std::cout << shape(0,7) << ", " << std::endl;
+//
+//          std::cout << shape(0,8) << ", ";
+//          std::cout << shape(0,9) << ", ";
+//          std::cout << shape(0,10) << ", ";
+//          std::cout << shape(0,11) << ", " << std::endl;
+//
+//          std::cout << shape(0,12) << ", ";
+//          std::cout << shape(0,13) << ", ";
+//          std::cout << shape(0,14) << ", ";
+//          std::cout << shape(0,15) << ", " << std::endl;
+//          std::cout << std::endl;
+   }
+}
+
 
 void VectorFiniteElement::Project_RT(
    const real_t *nk, const Array<int> &d2n,

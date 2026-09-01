@@ -16,30 +16,30 @@ namespace mfem
 
 using namespace std;
 
-//const double HCurl_PentatopeElement::tk[40] =
-//{ 0,0,-0.5,-0.5,  0,-0.5,0,0.5,  0,-0.5,-0.5,0,  -0.5,0,0,-0.5,  -0.5,0,-0.5,0,  -0.5,-0.5,0,0,  0.5,0.5,0.5,0,  0.5,0.5,0,0.5,  0.5,0,0.5,0.5,  0,0.5,0.5,0.5 };
-//
-//const double HCurl_PentatopeElement::tk1[40] =
-//{1,0,0,0, 1,0,0,0, 1,0,0,0, 0,1,0,0, 0,1,0,0, 0,0,1,0, -1,1,0,0, -1,1,0,0, -1,0,1,0, 0,-1,1,0};
-//
-//const double HCurl_PentatopeElement::tk2[40] =
-//{-1,1,0,0, -1,0,1,0, -1,0,0,1, 0,-1,1,0, 0,-1,0,1, 0,0,-1,1, 0,-1,1,0, 0,-1,0,1, 0,0,-1,1, 0,0,-1,1};
 
-//const double HSkwGrad_PentatopeElement::tk[40] =
-//{1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1, -1,1,0,0, -1,0,1,0, -1,0,0,1, 0,-1,1,0, 0,-1,0,1, 0,0,-1,1};
+// Current
+//const double HCurl_PentatopeElement::tk1[10][4] =
+//{{1,0,0,0},{1,0,0,0},{1,0,0,0},{0,1,0,0},{0,1,0,0},{0,0,1,0},{-1,1,0,0},{-1,1,0,0},{-1,0,1,0},{0,-1,1,0}};
+//
+//const double HCurl_PentatopeElement::tk2[10][4] =
+//{{-1,1,0,0},{-1,0,1,0},{-1,0,0,1},{0,-1,1,0},{0,-1,0,1},{0,0,-1,1},{0,-1,1,0},{0,-1,0,1},{0,0,-1,1},{0,0,-1,1}};
+
+
+// New
+const double HCurl_PentatopeElement::tk1[10][4] =
+{{1,0,0,0},{0,1,0,0},{0,0,1,0},{0,0,0,1},{-1,1,0,0},{-1,0,1,0},{0,-1,1,0},{-1,0,0,1},{-1,0,1,0},{0,0,-1,1}};
+
+const double HCurl_PentatopeElement::tk2[14][4] =
+{{-1,1,0,0},{-1,0,1,0},{-1,0,0,1},{0,-1,1,0},{0,-1,0,1},{0,0,-1,1},{0,-1,1,0},{0,-1,0,1},{0,0,-1,1},{0,0,-1,1},{1,0,0,0},{0,1,0,0},{0,0,1,0},{0,0,0,1}};
+
 
 //const double HCurl_PentatopeElement::c = 1./5.;
 
 HCurl_PentatopeElement::HCurl_PentatopeElement(const int p)
-: VectorFiniteElement(4, Geometry::PENTATOPE, p*(p + 2)*(p + 3)*(p + 4)/6,
+: VectorFiniteElement(4, Geometry::PENTATOPE, p*(p*p*p + 8*p*p + 19*p +12)/4,
                       p, H_CURL, FunctionSpace::Pk),
-dof2tk(dof), doftrans(p)
+dof2tk1(dof), dof2tk2(dof) , doftrans(p)
 {
-    
-//    const real_t *eop = poly1d.OpenPoints(p - 1);
-//    const real_t *fop = (p > 1) ? poly1d.OpenPoints(p - 2) : NULL;
-//    const real_t *ftop = (p > 2) ? poly1d.OpenPoints(p - 3) : NULL;
-//    const real_t *iop = (p > 3) ? poly1d.OpenPoints(p - 4) : NULL;
     
     const real_t *fop = poly1d.OpenPoints(p - 1);
     const real_t *ftop = (p > 1) ? poly1d.OpenPoints(p - 2) : NULL;
@@ -87,14 +87,14 @@ dof2tk(dof), doftrans(p)
     dshape_z.SetSize(p);
     dshape_t.SetSize(p);
     dshape_l.SetSize(p);
-    u.SetSize(dof, dim);
+    u.SetSize(dof, dim, dim);
 #else
     Vector shape_x(p), shape_y(p), shape_z(p), shape_t(p),
     shape_l(p);
 #endif
     // edges (see Tetrahedron::edges in mesh/tetrahedron.cpp)
     int o = 0;
-    
+    int test_order = p;
     // faces (see Mesh::GeneratePlanars in mesh/mesh.cpp)
     for (int j = 0; j < p; j++)
        for (int i=0; i + j < p; i++) // (0,1,2)
@@ -102,172 +102,286 @@ dof2tk(dof), doftrans(p)
           double w = fop[i] + fop[j] + fop[pm1-i-j];
            double xcoord = fop[i]/w;
            double ycoord = fop[j]/w;
+          //std::cout << xcoord << ", " << ycoord << " , 0.0, 0.0" << std::endl;
           Nodes.IntPoint(o).Set4(fop[i]/w, fop[j]/w, 0.0, 0.0);
-          dof2tk[o++] = 0;
+          dof2tk1[o] = 0;
+          dof2tk2[o++] = 0;
           //std::cout << "inside dof" << std::endl;
        }
     for (int j = 0; j < p; j++)
        for (int i=0; i + j < p; i++) // (0,1,3)
        {
           double w = fop[i] + fop[j] + fop[pm1-i-j];
+           double xcoord = fop[i]/w;
+           double zcoord = fop[j]/w;
+           //std::cout << xcoord << " ,0.0, " << zcoord << " ,0.0" << std::endl;
+
           Nodes.IntPoint(o).Set4(fop[i]/w, 0.0, fop[j]/w, 0.0);
-          dof2tk[o++] = 1;
+          dof2tk1[o] = 0;
+          dof2tk2[o++] = 1;
+//           dof2tk1[o] = 10;
+//           dof2tk2[o++] = 5;
+
        }
     for (int j = 0; j < p; j++)
        for (int i=0; i + j < p; i++) // (0,1,4)
        {
           double w = fop[i] + fop[j] + fop[pm1-i-j];
+           double xcoord = fop[i]/w;
+           double tcoord = fop[j]/w;
+           //std::cout << xcoord << " ,0.0, 0.0 " << tcoord << std::endl;
           Nodes.IntPoint(o).Set4(fop[i]/w, 0.0, 0.0, fop[j]/w);
-          dof2tk[o++] = 2;
+          dof2tk1[o] = 0;
+          dof2tk2[o++] = 2;
+
        }
     for (int j = 0; j < p; j++)
        for (int i=0; i + j < p; i++) // (0,2,3)
        {
           double w = fop[i] + fop[j] + fop[pm1-i-j];
+           double ycoord = fop[i]/w;
+           double zcoord = fop[j]/w;
+           //std::cout << "0.0, " <<  ycoord << ", " << zcoord << " ,0.0 " << std::endl;
           Nodes.IntPoint(o).Set4(0.0, fop[i]/w, fop[j]/w, 0.0);
-          dof2tk[o++] = 3;
+          dof2tk1[o] = 1;
+          dof2tk2[o++] = 3;
+
        }
     for (int j = 0; j < p; j++)
        for (int i=0; i + j < p; i++) // (0,2,4)
        {
           double w = fop[i] + fop[j] + fop[pm1-i-j];
+           double ycoord = fop[i]/w;
+           double tcoord = fop[j]/w;
+           //std::cout << "0.0, " << ycoord << " ,0.0, " << tcoord << std::endl;
           Nodes.IntPoint(o).Set4(0.0, fop[i]/w, 0.0, fop[j]/w);
-          dof2tk[o++] = 4;
+          dof2tk1[o] = 1;
+          dof2tk2[o++] = 4;
+
        }
     for (int j = 0; j < p; j++)
        for (int i=0; i + j < p; i++) // (0,3,4)
        {
           double w = fop[i] + fop[j] + fop[pm1-i-j];
+           double zcoord = fop[i]/w;
+           double tcoord = fop[j]/w;
+           //std::cout << "0.0, 0.0, " << zcoord << ", " << tcoord << std::endl;
           Nodes.IntPoint(o).Set4(0.0, 0.0, fop[i]/w, fop[j]/w);
-          dof2tk[o++] = 5;
+          dof2tk1[o] = 2;
+          dof2tk2[o++] = 5;
+
        }
     for (int j = 0; j < p; j++)
        for (int i=0; i + j < p; i++) // (1,2,3)
        {
           double w = fop[i] + fop[j] + fop[pm1-i-j];
+           double ycoord = fop[i]/w;
+           double xcoord = fop[pm1-i-j]/w;
+           double zcoord = fop[j]/w;
+           //std::cout << xcoord << ", " << ycoord << ", " << zcoord << ", 0.0" << std::endl;
           Nodes.IntPoint(o).Set4(fop[pm1-i-j]/w, fop[i]/w, fop[j]/w, 0.0);
-          dof2tk[o++] = 6;
+          dof2tk1[o] = 4;
+          dof2tk2[o++] = 6;
+
        }
     for (int j = 0; j < p; j++)
        for (int i=0; i + j < p; i++) // (1,2,4)
        {
           double w = fop[i] + fop[j] + fop[pm1-i-j];
+           double ycoord = fop[i]/w;
+           double xcoord = fop[pm1-i-j]/w;
+           double tcoord = fop[j]/w;
+           //std::cout << xcoord << ", " << ycoord << " ,0.0, " << tcoord << std::endl;
           Nodes.IntPoint(o).Set4(fop[pm1-i-j]/w, fop[i]/w, 0.0, fop[j]/w);
-          dof2tk[o++] = 7;
+          dof2tk1[o] = 4;
+          dof2tk2[o++] = 7;
+
        }
     for (int j = 0; j < p; j++)
        for (int i=0; i + j < p; i++) // (1,3,4)
        {
           double w = fop[i] + fop[j] + fop[pm1-i-j];
+           double zcoord = fop[i]/w;
+           double xcoord = fop[pm1-i-j]/w;
+           double tcoord = fop[j]/w;
+           //std::cout << xcoord << ", 0.0, " << zcoord << ", " << tcoord << std::endl;
           Nodes.IntPoint(o).Set4(fop[pm1-i-j]/w, 0.0, fop[i]/w, fop[j]/w);
-          dof2tk[o++] = 8;
+          dof2tk1[o] = 5;
+          dof2tk2[o++] = 8;
+
        }
     for (int j = 0; j < p; j++)
        for (int i=0; i + j < p; i++) // (2,3,4)
        {
           double w = fop[i] + fop[j] + fop[pm1-i-j];
+           double zcoord = fop[i]/w;
+           double ycoord = fop[pm1-i-j]/w;
+           double tcoord = fop[j]/w;
+           //std::cout << "0.0, " << ycoord << ", " << zcoord << ", " << tcoord << std::endl;
           Nodes.IntPoint(o).Set4(0.0, fop[pm1-i-j]/w, fop[i]/w, fop[j]/w);
-          dof2tk[o++] = 9;
+           //const IntegrationPoint &ip = Nodes.IntPoint(o);
+           //std::cout << "Dof 1  = " << ip.x << ", " << ip.y << ", " << ip.z << ", " << ip.t << std::endl;
+          dof2tk1[o] = 6;
+          dof2tk2[o++] = 9;
+
        }
-
+    
     // facets (see Mesh::GenerateFaces in mesh/mesh.cpp)
-    for (int k = 0; k <= pm2; k++)
-       for (int j = 0; j + k <= pm2; j++)
-          for (int i = 0; i + j + k <= pm2; i++)  // (0,1,2,3)
+    for (int k = 0; k < pm1; k++)
+       for (int j = 0; j + k < pm1; j++)
+          for (int i = 0; i + j + k < pm1; i++)  // (0,1,2,3)
           {
+              //std::cout << "inside facet dof" << std::endl;
              double w = ftop[i] + ftop[j] + ftop[k] + ftop[pm2-i-j-k];
              Nodes.IntPoint(o).Set4(ftop[i]/w, ftop[j]/w, ftop[k]/w, 0.0);
-             dof2tk[o++] = 0;
+             const IntegrationPoint &ip = Nodes.IntPoint(o);
+             //std::cout << "Dof 1  = " << ip.x << ", " << ip.y << ", " << ip.z << ", " << ip.t << std::endl;
+             dof2tk1[o] = 1;
+             dof2tk2[o++] = 10;
              Nodes.IntPoint(o).Set4(ftop[i]/w, ftop[j]/w, ftop[k]/w, 0.0);
-             dof2tk[o++] = 1;
-
+             dof2tk1[o] = 0;
+             dof2tk2[o++] = 12;
+             Nodes.IntPoint(o).Set4(ftop[i]/w, ftop[j]/w, ftop[k]/w, 0.0);
+             dof2tk1[o] = 2;
+             dof2tk2[o++] = 11;
           }
-    for (int k = 0; k <= pm2; k++)
-       for (int j = 0; j + k <= pm2; j++)
-          for (int i = 0; i + j + k <= pm2; i++)  // (0,2,1,4)
+    for (int k = 0; k < pm1; k++)
+       for (int j = 0; j + k < pm1; j++)
+          for (int i = 0; i + j + k < pm1; i++)  // (0,2,1,4)
           {
              double w = ftop[i] + ftop[j] + ftop[k] + ftop[pm2-i-j-k];
              Nodes.IntPoint(o).Set4(ftop[j]/w, ftop[i]/w, 0.0, ftop[k]/w);
-             dof2tk[o++] = 1;
+              const IntegrationPoint &ip = Nodes.IntPoint(o);
+              //std::cout << "Dof 2  = " << ip.x << ", " << ip.y << ", " << ip.z << ", " << ip.t << std::endl;
+             dof2tk1[o] = 0;
+             dof2tk2[o++] = 11;
              Nodes.IntPoint(o).Set4(ftop[j]/w, ftop[i]/w, 0.0, ftop[k]/w);
-             dof2tk[o++] = 0;
-
+             dof2tk1[o] = 1;
+             dof2tk2[o++] = 13;
+             Nodes.IntPoint(o).Set4(ftop[j]/w, ftop[i]/w, 0.0, ftop[k]/w);
+             dof2tk1[o] = 3;
+             dof2tk2[o++] = 10;
           }
-    for (int k = 0; k <= pm2; k++)
-       for (int j = 0; j + k <= pm2; j++)
-          for (int i = 0; i + j + k <= pm2; i++)  // (0,1,3,4)
+    for (int k = 0; k < pm1; k++)
+       for (int j = 0; j + k < pm1; j++)
+          for (int i = 0; i + j + k < pm1; i++)  // (0,1,3,4)
           {
              double w = ftop[i] + ftop[j] + ftop[k] + ftop[pm2-i-j-k];
              Nodes.IntPoint(o).Set4(ftop[i]/w, 0.0, ftop[j]/w, ftop[k]/w);
-             dof2tk[o++] = 0;
+              const IntegrationPoint &ip = Nodes.IntPoint(o);
+              //std::cout << "Dof 3  = " << ip.x << ", " << ip.y << ", " << ip.z << ", " << ip.t << std::endl;
+             dof2tk1[o] = 2;
+             dof2tk2[o++] = 10;
              Nodes.IntPoint(o).Set4(ftop[i]/w, 0.0, ftop[j]/w, ftop[k]/w);
-             dof2tk[o++] = 2;
-
+             dof2tk1[o] = 0;
+             dof2tk2[o++] = 13;
+             Nodes.IntPoint(o).Set4(ftop[i]/w, 0.0, ftop[j]/w, ftop[k]/w);
+             dof2tk1[o] = 3;
+             dof2tk2[o++] = 12;
           }
-    for (int k = 0; k <= pm2; k++)
-       for (int j = 0; j + k <= pm2; j++)
-          for (int i = 0; i + j + k <= pm2; i++)  // (0,3,2,4)
+    for (int k = 0; k < pm1; k++)
+       for (int j = 0; j + k < pm1; j++)
+          for (int i = 0; i + j + k < pm1; i++)  // (0,3,2,4)
           {
              double w = ftop[i] + ftop[j] + ftop[k] + ftop[pm2-i-j-k];
              Nodes.IntPoint(o).Set4(0.0, ftop[j]/w, ftop[i]/w, ftop[k]/w);
-             dof2tk[o++] = 2;
+              const IntegrationPoint &ip = Nodes.IntPoint(o);
+              //std::cout << "Dof 4  = " << ip.x << ", " << ip.y << ", " << ip.z << ", " << ip.t << std::endl;
+             dof2tk1[o] = 1;
+             dof2tk2[o++] = 12;
              Nodes.IntPoint(o).Set4(0.0, ftop[j]/w, ftop[i]/w, ftop[k]/w);
-             dof2tk[o++] = 1;
+             dof2tk1[o] = 2;
+             dof2tk2[o++] = 13;
+             Nodes.IntPoint(o).Set4(0.0, ftop[j]/w, ftop[i]/w, ftop[k]/w);
+             dof2tk1[o] = 3;
+             dof2tk2[o++] = 11;
+
 
           }
-    for (int k = 0; k <= pm2; k++)
-       for (int j = 0; j + k <= pm2; j++)
-          for (int i = 0; i + j + k <= pm2; i++)  // (1,2,3,4)
+    for (int k = 0; k < pm1; k++)
+       for (int j = 0; j + k < pm1; j++)
+          for (int i = 0; i + j + k < pm1; i++)  // (1,2,3,4)
           {
              double w = ftop[i] + ftop[j] + ftop[k] + ftop[pm2-i-j-k];
              Nodes.IntPoint(o).Set4(ftop[pm2-i-j-k]/w, ftop[i]/w, ftop[j]/w, ftop[k]/w);
-             dof2tk[o++] = 4;
+              const IntegrationPoint &ip = Nodes.IntPoint(o);
+              //std::cout << "Dof 5  = " << ip.x << ", " << ip.y << ", " << ip.z << ", " << ip.t << std::endl;
+             dof2tk1[o] = 5;
+             dof2tk2[o++] = 0;
              Nodes.IntPoint(o).Set4(ftop[pm2-i-j-k]/w, ftop[i]/w, ftop[j]/w, ftop[k]/w);
-             dof2tk[o++] = 5;
+             dof2tk1[o] = 4;
+             dof2tk2[o++] = 2;
+             Nodes.IntPoint(o).Set4(ftop[pm2-i-j-k]/w, ftop[i]/w, ftop[j]/w, ftop[k]/w);
+             dof2tk1[o] = 7;
+             dof2tk2[o++] = 1;
 
           }
+    
 
-    // interior bubbles
-    for (int l = 0; l <= pm3; l++)
-       for (int k = 0; k + l <= pm3; k++)
-          for (int j = 0; j + k + l <= pm3; j++)
-             for (int i = 0; i + j + k + l <= pm3; i++)
+     //interior bubbles
+    for (int l = 0; l < pm2; l++)
+       for (int k = 0; k + l < pm2; k++)
+          for (int j = 0; j + k + l < pm2; j++)
+             for (int i = 0; i + j + k + l < pm2; i++)
              {
                 double w = iop[i] + iop[j] + iop[k] + iop[l] + iop[pm3-i-j-k-l];
                 Nodes.IntPoint(o).Set4(iop[i]/w, iop[j]/w, iop[k]/w, iop[l]/w);
-                dof2tk[o++] = 0;
+                dof2tk1[o] = 1;
+                dof2tk2[o++] = 10;
                 Nodes.IntPoint(o).Set4(iop[i]/w, iop[j]/w, iop[k]/w, iop[l]/w);
-                dof2tk[o++] = 1;
+                dof2tk1[o] = 0;
+                dof2tk2[o++] = 12;
                 Nodes.IntPoint(o).Set4(iop[i]/w, iop[j]/w, iop[k]/w, iop[l]/w);
-                dof2tk[o++] = 2;
+                dof2tk1[o] = 0;
+                dof2tk2[o++] = 13;
                 Nodes.IntPoint(o).Set4(iop[i]/w, iop[j]/w, iop[k]/w, iop[l]/w);
-                dof2tk[o++] = 3;
+                dof2tk1[o] = 2;
+                dof2tk2[o++] = 11;
                 Nodes.IntPoint(o).Set4(iop[i]/w, iop[j]/w, iop[k]/w, iop[l]/w);
-                dof2tk[o++] = 4;
+                dof2tk1[o] = 3;
+                dof2tk2[o++] = 11;
                 Nodes.IntPoint(o).Set4(iop[i]/w, iop[j]/w, iop[k]/w, iop[l]/w);
-                dof2tk[o++] = 5;
-
+                dof2tk1[o] = 3;
+                dof2tk2[o++] = 12;
+                 
              }
-    /*
+    
     DenseMatrix T(dof);
+    
+    // Initialize result to zero
+    for (int j = 0; j < dof; j++) {
+        for (int n = 0; n < dof; n++) {
+            T(n,j) = 0.0;
+        }
+    }
+
+//    std::ofstream T_file("T_4DCurl.txt");
+//    T.PrintMatlab(T_file);
     DenseMatrix B(4, 4);
     //std::vector<DenseMatrix> Mat_B(dof);
     int num_dof = dof;
 
     double Tensor_B[4][4][num_dof];
-    double Mat_B[4][num_dof];
+    double Tensor_HC[4][4][num_dof];
+
+    DenseMatrix Mat_B(num_dof, dim);
     
     for (int q = 0; q < dof; q++)
     {
+        
         const IntegrationPoint &ip = Nodes.IntPoint(q);
-        //std::cout << "Dof " << q << " = " << ip.x << ", " << ip.y << ", " << ip.z << ", " << ip.t << std::endl;
+        //std::cout << "Dof " << q << " = " << ip.x << ", " << ip.y << ", " << ip.z << ", " << ip.t << "----------------------" << std::endl;
         
         //const double *nm = nk + 4*dof2nk[m];
+        // TOP OF DOF
+        const double tm1[4] = {tk1[dof2tk1[q]][0], tk1[dof2tk1[q]][1], tk1[dof2tk1[q]][2], tk1[dof2tk1[q]][3]};
         
-        double tm1[4] = {tk1[4*dof2tk[q]], tk1[4*dof2tk[q]+1], tk1[4*dof2tk[q]+2], tk1[4*dof2tk[q]+3]};
+        const double tm2[4] = {tk2[dof2tk2[q]][0], tk2[dof2tk2[q]][1], tk2[dof2tk2[q]][2], tk2[dof2tk2[q]][3]};
         
-        double tm2[4] = {tk2[4*dof2tk[q]], tk2[4*dof2tk[q]+1], tk2[4*dof2tk[q]+2], tk2[4*dof2tk[q]+3]};
-
+        //        const double tm1[4] = {tk1[dof2tk[q]][0], tk1[dof2tk[q]][1], tk1[dof2tk[q]][2], tk1[dof2tk[q]][3]};
+        //
+        //        const double tm2[4] = {tk2[dof2tk[q]][0], tk2[dof2tk[q]][1], tk2[dof2tk[q]][2], tk2[dof2tk[q]][3]};
+        
         //const Vector tm({tk[4*dof2tk[q]], tk[4*dof2tk[q]+1], tk[4*dof2tk[q]+2], tk[4*dof2tk[q]+3]});
         //std::cout << "tm < " << tm(0) << "," << tm(1) << "," << tm(2) << "," << tm(3) << ">" <<std::endl;
         int o = 0;
@@ -289,21 +403,36 @@ dof2tk(dof), doftrans(p)
         
         std::vector<double> grad_La, grad_Lb, grad_Lc, grad_Ld, grad_Le;
         
+        double sf = 0.5;
         
-        //Faces
-        for(int i=0; i<p;i++)
+        
+       // Faces
+//        for(int i=0; i<p;i++)
+//        {
+//            for(int j=0; j<p;j++)
+//            {
+//                for(int a=0; a<5;a++)
+//                {
+//                    for(int b=0; b<5;b++)
+//                    {
+//                        for(int c=0; c<5;c++)
+//                        {
+//                            if((a<b)&&(b<c)&&((i+j)<p))
+//                            {
+        for(int a=0; a<5;a++)
         {
-            for(int j=0; j<p;j++)
+            for(int b=0; b<5;b++)
             {
-                for(int a=0; a<5;a++)
+                for(int c=0; c<5;c++)
                 {
-                    for(int b=0; b<5;b++)
+                    for(int i=0; i<p;i++)
                     {
-                        for(int c=0; c<5;c++)
+                        for(int j=0; j<p;j++)
                         {
+
                             if((a<b)&&(b<c)&&((i+j)<p))
                             {
-                                
+
                                 La = bary_vector[a];
                                 Lb = bary_vector[b];
                                 Lc = bary_vector[c];
@@ -324,32 +453,36 @@ dof2tk(dof), doftrans(p)
                                 double alpha = 2*i + 1;
                                 poly1d.CalcJacobi(j, x, y, alpha, Jacobi_j);
                                 
+                                
                                 // Scaled Skew-sym outer product
                                 DenseMatrix skw_sym_outerprod_1 = skw_sym_outerprod_fnc(grad_Lb, grad_Lc);
                                 DenseMatrix skw_sym_outerprod_2 = skw_sym_outerprod_fnc(grad_Lc, grad_La);
                                 DenseMatrix skw_sym_outerprod_3 = skw_sym_outerprod_fnc(grad_La, grad_Lb);
-
                                 
                                 // Add Basis Funcitons
-                                Tensor_B[0][0][o] = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,0) + Lb*skw_sym_outerprod_2(0,0) + Lc*skw_sym_outerprod_3(0,0));
-                                Tensor_B[0][1][o] = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,1) + Lb*skw_sym_outerprod_2(0,1) + Lc*skw_sym_outerprod_3(0,1));
-                                Tensor_B[0][2][o] = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,2) + Lb*skw_sym_outerprod_2(0,2) + Lc*skw_sym_outerprod_3(0,2));
-                                Tensor_B[0][3][o] = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,3) + Lb*skw_sym_outerprod_2(0,3) + Lc*skw_sym_outerprod_3(0,3));
-                                Tensor_B[1][0][o] = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,0) + Lb*skw_sym_outerprod_2(1,0) + Lc*skw_sym_outerprod_3(1,0));
-                                Tensor_B[1][1][o] = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,1) + Lb*skw_sym_outerprod_2(1,1) + Lc*skw_sym_outerprod_3(1,1));
-                                Tensor_B[1][2][o] = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,2) + Lb*skw_sym_outerprod_2(1,2) + Lc*skw_sym_outerprod_3(1,2));
-                                Tensor_B[1][3][o] = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,3) + Lb*skw_sym_outerprod_2(1,3) + Lc*skw_sym_outerprod_3(1,3));
-                                Tensor_B[2][0][o] = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,0) + Lb*skw_sym_outerprod_2(2,0) + Lc*skw_sym_outerprod_3(2,0));
-                                Tensor_B[2][1][o] = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,1) + Lb*skw_sym_outerprod_2(2,1) + Lc*skw_sym_outerprod_3(2,1));
-                                Tensor_B[2][2][o] = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,2) + Lb*skw_sym_outerprod_2(2,2) + Lc*skw_sym_outerprod_3(2,2));
-                                Tensor_B[2][3][o] = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,3) + Lb*skw_sym_outerprod_2(2,3) + Lc*skw_sym_outerprod_3(2,3));
-                                Tensor_B[3][0][o] = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,0) + Lb*skw_sym_outerprod_2(3,0) + Lc*skw_sym_outerprod_3(3,0));
-                                Tensor_B[3][1][o] = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,1) + Lb*skw_sym_outerprod_2(3,1) + Lc*skw_sym_outerprod_3(3,1));
-                                Tensor_B[3][2][o] = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,2) + Lb*skw_sym_outerprod_2(3,2) + Lc*skw_sym_outerprod_3(3,2));
-                                Tensor_B[3][3][o] = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,3) + Lb*skw_sym_outerprod_2(3,3) + Lc*skw_sym_outerprod_3(3,3));
+                                Tensor_B[0][0][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,0) + Lb*skw_sym_outerprod_2(0,0) + Lc*skw_sym_outerprod_3(0,0));
+                                Tensor_B[0][1][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,1) + Lb*skw_sym_outerprod_2(0,1) + Lc*skw_sym_outerprod_3(0,1));
+                                Tensor_B[0][2][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,2) + Lb*skw_sym_outerprod_2(0,2) + Lc*skw_sym_outerprod_3(0,2));
+                                Tensor_B[0][3][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,3) + Lb*skw_sym_outerprod_2(0,3) + Lc*skw_sym_outerprod_3(0,3));
                                 
-                                //Mat_B.push_back(B);
-                                //Mat_B[o] = B;
+                                
+                                Tensor_B[1][0][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,0) + Lb*skw_sym_outerprod_2(1,0) + Lc*skw_sym_outerprod_3(1,0));
+                                Tensor_B[1][1][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,1) + Lb*skw_sym_outerprod_2(1,1) + Lc*skw_sym_outerprod_3(1,1));
+                                Tensor_B[1][2][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,2) + Lb*skw_sym_outerprod_2(1,2) + Lc*skw_sym_outerprod_3(1,2));
+                                Tensor_B[1][3][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,3) + Lb*skw_sym_outerprod_2(1,3) + Lc*skw_sym_outerprod_3(1,3));
+                                
+                                
+                                Tensor_B[2][0][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,0) + Lb*skw_sym_outerprod_2(2,0) + Lc*skw_sym_outerprod_3(2,0));
+                                Tensor_B[2][1][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,1) + Lb*skw_sym_outerprod_2(2,1) + Lc*skw_sym_outerprod_3(2,1));
+                                Tensor_B[2][2][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,2) + Lb*skw_sym_outerprod_2(2,2) + Lc*skw_sym_outerprod_3(2,2));
+                                Tensor_B[2][3][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,3) + Lb*skw_sym_outerprod_2(2,3) + Lc*skw_sym_outerprod_3(2,3));
+                                
+                                Tensor_B[3][0][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,0) + Lb*skw_sym_outerprod_2(3,0) + Lc*skw_sym_outerprod_3(3,0));
+                                Tensor_B[3][1][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,1) + Lb*skw_sym_outerprod_2(3,1) + Lc*skw_sym_outerprod_3(3,1));
+                                Tensor_B[3][2][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,2) + Lb*skw_sym_outerprod_2(3,2) + Lc*skw_sym_outerprod_3(3,2));
+                                Tensor_B[3][3][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,3) + Lb*skw_sym_outerprod_2(3,3) + Lc*skw_sym_outerprod_3(3,3));
+                                
+                                
                                 o++;
                                 
                                 
@@ -361,76 +494,618 @@ dof2tk(dof), doftrans(p)
         }
         // end of faces
         
+        //Facets
+        int a;
+        int b;
+        int c;
+        int d;
+        
+        for (int f=0; f<5; f++)
+        {
+            // Define each facet
+            if (f==0)
+            {
+                a = 0;
+                b = 1;
+                c = 2;
+                d = 3;
+                
+            }
+            else if(f==1)
+            {
+                // Define Facet
+                a = 0;
+                b = 2;
+                c = 1;
+                d = 4;
+                
+            }
+            // Define each facet
+            else if (f==2)
+            {
+                // Define Facet
+                a = 0;
+                b = 1;
+                c = 3;
+                d = 4;
+                
+            }
+            // Define each facet
+            else if (f==3)
+            {
+                // Define Facet
+                a = 0;
+                b = 3;
+                c = 2;
+                d = 4;
+                
+            }
+            // Define each facet
+            else if (f==4)
+            {
+                // Define Facet
+                a = 1;
+                b = 2;
+                c = 3;
+                d = 4;
+                
+            }
+            else
+            {
+                mfem_error("Invaild facet");
+            }
+            
+            
+            for(int i=0; i<p;i++)
+            {
+                for(int j=0; j<p;j++)
+                {
+                    for(int l=1; l<p;l++)
+                    {
+                        
+                        if((i+j+l)<p)
+                        {
+                            //num_facesH++;
+                            
+                            int Family = 1;
+                            
+                            if (Family == 1)
+                            {
+                                
+                                // Family I:
+                                
+                                // Define Barycentric Coordinates
+                                La = bary_vector[a];
+                                Lb = bary_vector[b];
+                                Lc = bary_vector[c];
+                                Ld = bary_vector[d];
+                                
+                                grad_La = gradbary_vector[a];
+                                grad_Lb = gradbary_vector[b];
+                                grad_Lc = gradbary_vector[c];
+                                grad_Ld = gradbary_vector[d];
+                                
+                                // compute polynomials
+                                
+                                // compute polynomials
+                                std::vector<double> Legendre_i;
+                                double x = Lb;
+                                double y = La + Lb;
+                                poly1d.CalcLegendreShifted(i, x, y, Legendre_i);
+                                
+                                std::vector<double> Jacobi_j;
+                                x = Lc;
+                                y = La + Lb + Lc;
+                                double alpha = 2*i + 1;
+                                poly1d.CalcJacobi(j, x, y, alpha, Jacobi_j);
+                                
+                                
+                                std::vector<double> Int_Jacobi_l;
+                                x = Ld;
+                                y = La + Lb + Lc + Ld;
+                                alpha = 2*(i + j + 1);
+                                poly1d.CalcIntJacobi(l, x, y, alpha, Int_Jacobi_l);
+                                
+                                
+                                // Scaled Skew-sym outer product
+                                DenseMatrix skw_sym_outerprod_1 = skw_sym_outerprod_fnc(grad_Lb, grad_Lc);
+                                DenseMatrix skw_sym_outerprod_2 = skw_sym_outerprod_fnc(grad_Lc, grad_La);
+                                DenseMatrix skw_sym_outerprod_3 = skw_sym_outerprod_fnc(grad_La, grad_Lb);
+                                
+                                
+                                // Add Basis Funcitons
+                                Tensor_B[0][0][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(0,0) + Lb*skw_sym_outerprod_2(0,0) + Lc*skw_sym_outerprod_3(0,0));
+                                Tensor_B[0][1][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(0,1) + Lb*skw_sym_outerprod_2(0,1) + Lc*skw_sym_outerprod_3(0,1));
+                                Tensor_B[0][2][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(0,2) + Lb*skw_sym_outerprod_2(0,2) + Lc*skw_sym_outerprod_3(0,2));
+                                Tensor_B[0][3][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(0,3) + Lb*skw_sym_outerprod_2(0,3) + Lc*skw_sym_outerprod_3(0,3));
+                                
+                                
+                                Tensor_B[1][0][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(1,0) + Lb*skw_sym_outerprod_2(1,0) + Lc*skw_sym_outerprod_3(1,0));
+                                Tensor_B[1][1][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(1,1) + Lb*skw_sym_outerprod_2(1,1) + Lc*skw_sym_outerprod_3(1,1));
+                                Tensor_B[1][2][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(1,2) + Lb*skw_sym_outerprod_2(1,2) + Lc*skw_sym_outerprod_3(1,2));
+                                Tensor_B[1][3][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(1,3) + Lb*skw_sym_outerprod_2(1,3) + Lc*skw_sym_outerprod_3(1,3));
+                                
+                                
+                                Tensor_B[2][0][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(2,0) + Lb*skw_sym_outerprod_2(2,0) + Lc*skw_sym_outerprod_3(2,0));
+                                Tensor_B[2][1][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(2,1) + Lb*skw_sym_outerprod_2(2,1) + Lc*skw_sym_outerprod_3(2,1));
+                                Tensor_B[2][2][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1]* (La*skw_sym_outerprod_1(2,2) + Lb*skw_sym_outerprod_2(2,2) + Lc*skw_sym_outerprod_3(2,2));
+                                Tensor_B[2][3][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1]* (La*skw_sym_outerprod_1(2,3) + Lb*skw_sym_outerprod_2(2,3) + Lc*skw_sym_outerprod_3(2,3));
+                                
+                                
+                                Tensor_B[3][0][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(3,0) + Lb*skw_sym_outerprod_2(3,0) + Lc*skw_sym_outerprod_3(3,0));
+                                Tensor_B[3][1][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(3,1) + Lb*skw_sym_outerprod_2(3,1) + Lc*skw_sym_outerprod_3(3,1));
+                                Tensor_B[3][2][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(3,2) + Lb*skw_sym_outerprod_2(3,2) + Lc*skw_sym_outerprod_3(3,2));
+                                Tensor_B[3][3][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(3,3) + Lb*skw_sym_outerprod_2(3,3) + Lc*skw_sym_outerprod_3(3,3));
+                            
+                                o++;
+                            }
+                            
+                            Family++;
+                            
+                            
+                            if (Family == 2)
+                            {
+                                // Define Barycentric Coordinates
+                                La = bary_vector[b];
+                                Lb = bary_vector[c];
+                                Lc = bary_vector[d];
+                                Ld = bary_vector[a];
+                                
+                                grad_La = gradbary_vector[b];
+                                grad_Lb = gradbary_vector[c];
+                                grad_Lc = gradbary_vector[d];
+                                grad_Ld = gradbary_vector[a];
+                                
+                                // Family II:
+                                
+                                // compute polynomials
+                                std::vector<double> Legendre_i;
+                                double x = Lb;
+                                double y = La + Lb;
+                                poly1d.CalcLegendreShifted(i, x, y, Legendre_i);
+                                
+                                
+                                std::vector<double> Jacobi_j;
+                                x = Lc;
+                                y = La + Lb + Lc;
+                                double alpha = 2*i + 1;
+                                poly1d.CalcJacobi(j, x, y, alpha, Jacobi_j);
+                                
+                                
+                                std::vector<double> Int_Jacobi_l;
+                                x = Ld;
+                                y = La + Lb + Lc + Ld;
+                                alpha = 2*(i +j +1);
+                                poly1d.CalcIntJacobi(l, x, y, alpha, Int_Jacobi_l);
+                                
+                                
+                                // Scaled Skew-sym outer product
+                                DenseMatrix skw_sym_outerprod_1 = skw_sym_outerprod_fnc(grad_Lb, grad_Lc);
+                                DenseMatrix skw_sym_outerprod_2 = skw_sym_outerprod_fnc(grad_Lc, grad_La);
+                                DenseMatrix skw_sym_outerprod_3 = skw_sym_outerprod_fnc(grad_La, grad_Lb);
+                                
+                                
+                                
+                                // Add Basis Funcitons
+                                Tensor_B[0][0][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(0,0) + Lb*skw_sym_outerprod_2(0,0) + Lc*skw_sym_outerprod_3(0,0));
+                                Tensor_B[0][1][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(0,1) + Lb*skw_sym_outerprod_2(0,1) + Lc*skw_sym_outerprod_3(0,1));
+                                Tensor_B[0][2][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(0,2) + Lb*skw_sym_outerprod_2(0,2) + Lc*skw_sym_outerprod_3(0,2));
+                                Tensor_B[0][3][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(0,3) + Lb*skw_sym_outerprod_2(0,3) + Lc*skw_sym_outerprod_3(0,3));
+                                
+                                
+                                Tensor_B[1][0][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(1,0) + Lb*skw_sym_outerprod_2(1,0) + Lc*skw_sym_outerprod_3(1,0));
+                                Tensor_B[1][1][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(1,1) + Lb*skw_sym_outerprod_2(1,1) + Lc*skw_sym_outerprod_3(1,1));
+                                Tensor_B[1][2][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(1,2) + Lb*skw_sym_outerprod_2(1,2) + Lc*skw_sym_outerprod_3(1,2));
+                                Tensor_B[1][3][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(1,3) + Lb*skw_sym_outerprod_2(1,3) + Lc*skw_sym_outerprod_3(1,3));
+                                
+                                
+                                Tensor_B[2][0][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(2,0) + Lb*skw_sym_outerprod_2(2,0) + Lc*skw_sym_outerprod_3(2,0));
+                                Tensor_B[2][1][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(2,1) + Lb*skw_sym_outerprod_2(2,1) + Lc*skw_sym_outerprod_3(2,1));
+                                Tensor_B[2][2][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1]* (La*skw_sym_outerprod_1(2,2) + Lb*skw_sym_outerprod_2(2,2) + Lc*skw_sym_outerprod_3(2,2));
+                                Tensor_B[2][3][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1]* (La*skw_sym_outerprod_1(2,3) + Lb*skw_sym_outerprod_2(2,3) + Lc*skw_sym_outerprod_3(2,3));
+                                
+                                
+                                Tensor_B[3][0][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(3,0) + Lb*skw_sym_outerprod_2(3,0) + Lc*skw_sym_outerprod_3(3,0));
+                                Tensor_B[3][1][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(3,1) + Lb*skw_sym_outerprod_2(3,1) + Lc*skw_sym_outerprod_3(3,1));
+                                Tensor_B[3][2][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(3,2) + Lb*skw_sym_outerprod_2(3,2) + Lc*skw_sym_outerprod_3(3,2));
+                                Tensor_B[3][3][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(3,3) + Lb*skw_sym_outerprod_2(3,3) + Lc*skw_sym_outerprod_3(3,3));
+                        
+                                
+                                o++;
+                                
+                            }
+                            
+                            Family++;
+                            
+                            if (Family == 3)
+                            {
+                                
+                                // Define Barycentric Coordinates
+                                La = bary_vector[c];
+                                Lb = bary_vector[d];
+                                Lc = bary_vector[a];
+                                Ld = bary_vector[b];
+                                
+                                grad_La = gradbary_vector[c];
+                                grad_Lb = gradbary_vector[d];
+                                grad_Lc = gradbary_vector[a];
+                                grad_Ld = gradbary_vector[b];
+                                
+                                // Family III:
+                                
+                                // compute polynomials
+                                std::vector<double> Legendre_i;
+                                double x = Lb;
+                                double y = La + Lb;
+                                poly1d.CalcLegendreShifted(i, x, y, Legendre_i);
+                                
+                                
+                                std::vector<double> Jacobi_j;
+                                x = Lc;
+                                y = La + Lb + Lc;
+                                double alpha = 2*i + 1;
+                                poly1d.CalcJacobi(j, x, y, alpha, Jacobi_j);
+                                
+                                
+                                std::vector<double> Int_Jacobi_l;
+                                x = Ld;
+                                y = La + Lb + Lc + Ld;
+                                alpha = 2*(i +j +1);
+                                poly1d.CalcIntJacobi(l, x, y, alpha, Int_Jacobi_l);
+                                
+                                
+                                
+                                // Scaled Skew-sym outer product
+                                DenseMatrix skw_sym_outerprod_1 = skw_sym_outerprod_fnc(grad_Lb, grad_Lc);
+                                DenseMatrix skw_sym_outerprod_2 = skw_sym_outerprod_fnc(grad_Lc, grad_La);
+                                DenseMatrix skw_sym_outerprod_3 = skw_sym_outerprod_fnc(grad_La, grad_Lb);
+                                
+                                
+                                
+                                
+                                
+                                // Add Basis Funcitons
+                                Tensor_B[0][0][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(0,0) + Lb*skw_sym_outerprod_2(0,0) + Lc*skw_sym_outerprod_3(0,0));
+                                Tensor_B[0][1][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(0,1) + Lb*skw_sym_outerprod_2(0,1) + Lc*skw_sym_outerprod_3(0,1));
+                                Tensor_B[0][2][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(0,2) + Lb*skw_sym_outerprod_2(0,2) + Lc*skw_sym_outerprod_3(0,2));
+                                Tensor_B[0][3][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(0,3) + Lb*skw_sym_outerprod_2(0,3) + Lc*skw_sym_outerprod_3(0,3));
+                                
+                                
+                                Tensor_B[1][0][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(1,0) + Lb*skw_sym_outerprod_2(1,0) + Lc*skw_sym_outerprod_3(1,0));
+                                Tensor_B[1][1][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(1,1) + Lb*skw_sym_outerprod_2(1,1) + Lc*skw_sym_outerprod_3(1,1));
+                                Tensor_B[1][2][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(1,2) + Lb*skw_sym_outerprod_2(1,2) + Lc*skw_sym_outerprod_3(1,2));
+                                Tensor_B[1][3][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(1,3) + Lb*skw_sym_outerprod_2(1,3) + Lc*skw_sym_outerprod_3(1,3));
+                                
+                                
+                                Tensor_B[2][0][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(2,0) + Lb*skw_sym_outerprod_2(2,0) + Lc*skw_sym_outerprod_3(2,0));
+                                Tensor_B[2][1][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(2,1) + Lb*skw_sym_outerprod_2(2,1) + Lc*skw_sym_outerprod_3(2,1));
+                                Tensor_B[2][2][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1]* (La*skw_sym_outerprod_1(2,2) + Lb*skw_sym_outerprod_2(2,2) + Lc*skw_sym_outerprod_3(2,2));
+                                Tensor_B[2][3][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1]* (La*skw_sym_outerprod_1(2,3) + Lb*skw_sym_outerprod_2(2,3) + Lc*skw_sym_outerprod_3(2,3));
+                                
+                                
+                                Tensor_B[3][0][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(3,0) + Lb*skw_sym_outerprod_2(3,0) + Lc*skw_sym_outerprod_3(3,0));
+                                Tensor_B[3][1][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(3,1) + Lb*skw_sym_outerprod_2(3,1) + Lc*skw_sym_outerprod_3(3,1));
+                                Tensor_B[3][2][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(3,2) + Lb*skw_sym_outerprod_2(3,2) + Lc*skw_sym_outerprod_3(3,2));
+                                Tensor_B[3][3][o] = sf *Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(3,3) + Lb*skw_sym_outerprod_2(3,3) + Lc*skw_sym_outerprod_3(3,3));
+                                
+                                
+                                o++;
+                                
+                            }
+                            
+                        }
+                    }
+                }
+            }
+            
+        }// end of Facets
+        
+        //Interiors
+        for (int r = 0; r<6; r++)
+        {
+            if (r ==0)
+            {
+                //case where (a,b,c,d,e) = (0,1,2,3,4)
+                // define lamda
+                La = bary_vector[0];
+                Lb = bary_vector[1];
+                Lc = bary_vector[2];
+                Ld = bary_vector[3];
+                Le = bary_vector[4];
+                
+                // define a,b,c,d
+                a = 0;
+                b = 1;
+                c = 2;
+                d = 3;
+                
+            }
+            else if (r==1)
+            {
+                //case where (a,b,c,d,e) = (1,2,3,4,0)
+                // define lamda
+                La = bary_vector[1];
+                Lb = bary_vector[2];
+                Lc = bary_vector[3];
+                Ld = bary_vector[4];
+                Le = bary_vector[0];
+                
+                // define a,b,c,d
+                a = 1;
+                b = 2;
+                c = 3;
+                d = 4;
+                
+                
+            }
+            else if (r==2)
+            {
+                //case where (a,b,c,d,e) = (2,3,4,0,1)
+                // define lamda
+                La = bary_vector[2];
+                Lb = bary_vector[3];
+                Lc = bary_vector[4];
+                Ld = bary_vector[0];
+                Le = bary_vector[1];
+                
+                // define a,b,c,d
+                a = 2;
+                b = 3;
+                c = 4;
+                d = 0;
+                
+            }
+            else if (r==3)
+            {
+                //case where (a,b,c,d,e) = (3,4,0,1,2)
+                // define lamda
+                La = bary_vector[3];
+                Lb = bary_vector[4];
+                Lc = bary_vector[0];
+                Ld = bary_vector[1];
+                Le = bary_vector[2];
+                
+                // define a,b,c,d
+                a = 3;
+                b = 4;
+                c = 0;
+                d = 1;
+                
+            }
+            else if (r==4)
+            {
+                //case where (a,b,c,d,e) = (4,0,1,2,3)
+                // define lamda
+                La = bary_vector[4];
+                Lb = bary_vector[0];
+                Lc = bary_vector[1];
+                Ld = bary_vector[2];
+                Le = bary_vector[3];
+                
+                // define a,b,c,d
+                a = 4;
+                b = 0;
+                c = 1;
+                d = 2;
+                
+                
+            }
+            else if (r==5)
+            {
+                //case where (a,b,c,d,e) = (0,1,3,2,4)
+                // define lamda
+                La = bary_vector[0];
+                Lb = bary_vector[1];
+                Lc = bary_vector[3];
+                Ld = bary_vector[2];
+                Le = bary_vector[4];
+                
+                // define a,b,c,d
+                a = 0;
+                b = 1;
+                c = 3;
+                d = 2;
+                
+            }
+            else
+            {
+                mfem_error("Invaild Bubble");
+            }
+            
+            for(int i=0; i<p;i++)
+            {
+                for(int j=0; j<p;j++)
+                {
+                    for(int l=1; l<p;l++)
+                    {
+                        for (int m=1; m<p; m++)
+                        {
+                            if((i+j+l+m)<p)
+                            {
+                                
+                                // Define Barycentric Coordinates
+                                grad_La = gradbary_vector[a];
+                                grad_Lb = gradbary_vector[b];
+                                grad_Lc = gradbary_vector[c];
+                                grad_Ld = gradbary_vector[d];
+                                
+                                
+                                // compute polynomials
+                                std::vector<double> Legendre_i;
+                                double x = Lb;
+                                double y = La + Lb;
+                                poly1d.CalcLegendreShifted(i, x, y, Legendre_i);
+                                
+                                std::vector<double> Jacobi_j;
+                                x = Lc;
+                                y = La + Lb + Lc;
+                                double alpha = 2*i + 1;
+                                poly1d.CalcJacobi(j, x, y, alpha, Jacobi_j);
+                                
+                                
+                                std::vector<double> Int_Jacobi_l;
+                                x = Ld;
+                                y = La + Lb + Lc + Ld;
+                                alpha = 2*(i + j + 1);
+                                poly1d.CalcIntJacobi(l, x, y, alpha, Int_Jacobi_l);
+                                
+                                std::vector<double> Int_Jacobi_m;
+                                x = Le;
+                                y = 1.0;
+                                alpha = 2*(i + j + l);
+                                poly1d.CalcIntJacobi(m, x, y, alpha, Int_Jacobi_m);
+                                
+                                
+                                // Scaled Skew-sym outer product
+                                DenseMatrix skw_sym_outerprod_1 = skw_sym_outerprod_fnc(grad_Lb, grad_Lc);
+                                DenseMatrix skw_sym_outerprod_2 = skw_sym_outerprod_fnc(grad_Lc, grad_La);
+                                DenseMatrix skw_sym_outerprod_3 = skw_sym_outerprod_fnc(grad_La, grad_Lb);
+                                
+                                
+                                // Add Basis Funcitons
+                                Tensor_B[0][0][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(0,0) + Lb*skw_sym_outerprod_2(0,0) + Lc*skw_sym_outerprod_3(0,0));
+                                Tensor_B[0][1][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(0,1) + Lb*skw_sym_outerprod_2(0,1) + Lc*skw_sym_outerprod_3(0,1));
+                                Tensor_B[0][2][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(0,2) + Lb*skw_sym_outerprod_2(0,2) + Lc*skw_sym_outerprod_3(0,2));
+                                Tensor_B[0][3][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(0,3) + Lb*skw_sym_outerprod_2(0,3) + Lc*skw_sym_outerprod_3(0,3));
+                                
+                                
+                                Tensor_B[1][0][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(1,0) + Lb*skw_sym_outerprod_2(1,0) + Lc*skw_sym_outerprod_3(1,0));
+                                Tensor_B[1][1][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(1,1) + Lb*skw_sym_outerprod_2(1,1) + Lc*skw_sym_outerprod_3(1,1));
+                                Tensor_B[1][2][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(1,2) + Lb*skw_sym_outerprod_2(1,2) + Lc*skw_sym_outerprod_3(1,2));
+                                Tensor_B[1][3][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(1,3) + Lb*skw_sym_outerprod_2(1,3) + Lc*skw_sym_outerprod_3(1,3));
+                                
+                                
+                                Tensor_B[2][0][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(2,0) + Lb*skw_sym_outerprod_2(2,0) + Lc*skw_sym_outerprod_3(2,0));
+                                Tensor_B[2][1][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(2,1) + Lb*skw_sym_outerprod_2(2,1) + Lc*skw_sym_outerprod_3(2,1));
+                                Tensor_B[2][2][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(2,2) + Lb*skw_sym_outerprod_2(2,2) + Lc*skw_sym_outerprod_3(2,2));
+                                Tensor_B[2][3][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(2,3) + Lb*skw_sym_outerprod_2(2,3) + Lc*skw_sym_outerprod_3(2,3));
+                                
+                                
+                                Tensor_B[3][0][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(3,0) + Lb*skw_sym_outerprod_2(3,0) + Lc*skw_sym_outerprod_3(3,0));
+                                Tensor_B[3][1][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(3,1) + Lb*skw_sym_outerprod_2(3,1) + Lc*skw_sym_outerprod_3(3,1));
+                                Tensor_B[3][2][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(3,2) + Lb*skw_sym_outerprod_2(3,2) + Lc*skw_sym_outerprod_3(3,2));
+                                Tensor_B[3][3][o] = sf * Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(3,3) + Lb*skw_sym_outerprod_2(3,3) + Lc*skw_sym_outerprod_3(3,3));
+                                
+                                o++;
+                                
+                            }
+                        }
+                    }
+                }
+            }
+            
+        }// End of Interiors
+         
+        
 
         // Initialize result to zero
         for (int j = 0; j < 4; j++) {
             for (int n = 0; n < num_dof; n++) {
-                Mat_B[j][n] = 0.0;
+                Mat_B(n,j) = 0.0;
             }
         }
+        
 
         // Perform contraction over i
-        for (int n = 0; n < num_dof; n++) {
-            for (int j = 0; j < 4; j++) {
-                double sum = 0.0;
-                for (int i = 0; i < 4; i++) {
-                    sum += Tensor_B[i][j][n] * tm1[i];
-                }
-                Mat_B[j][n] = sum;
-            }
-        }
-        // Perfrom contraction over j
-        std::vector<double> vec_B(num_dof);
-        for (int n = 0; n < num_dof; n++)
-        {
-            std::cout << "New Dof" << std::endl;
-            double sum = 0.0;
-            for (int j = 0; j < 4; j++)
-            {
-                sum += tm2[j] * Mat_B[j][n];
-            }
-            std::cout << "sum value" << std::endl;
-            std::cout << sum << std::endl;
-            vec_B[n] = sum;  // This vector is of size (1 x N)
-        }
-        
-        // Add to Vandermonde matrix
         for (int n = 0; n < num_dof; n++) 
         {
-            T(n,q) = vec_B[n];
-        }
-        
-        //vec_B = T.GetColumn(q);
-    
-        //B.Mult(tm, T.GetColumn(q));
+            for (int j = 0; j < 4; j++) 
+            {
+                // Reset Sum
+                double sum = 0.0;
+                
+                for (int i = 0; i < 4; i++)
+                {
+                    sum += Tensor_B[i][j][n] * tm1[i];
+                    //sum += Tensor_HC[i][j][n] * tm1[i];
 
-    }*/
+                }
+                // Store as transpose
+                Mat_B(n, j) = sum;
+            }
+        }
+//        
+//        std::cout << "Check Mat_B " << std::endl;
+//        for (int n = 0; n < dof; n++) {
+//            for (int j = 0; j < 4; j++) {
+//                std::cout << Mat_B(n,j) << ", ";
+//            }
+//            std::cout << std::endl;
+//        }
+//        std::ofstream T_file("T_4DCurl.txt");
+//        T.PrintMatlab(T_file);
+//        std::cout << "Vander Building" << std::endl;
+//        for (int row = 0; row < dof; row++)
+//        {
+//            for (int col = 0; col < dof; col++) {
+//                std::cout << ", " << T(row,col);
+//            }
+//            std::cout << std::endl;
+//
+//        }
+        //Mat_B = Mat_B * 0.5;
+        Mat_B.Mult(tm2, T.GetColumn(q));
+//                std::cout << "Vander Building" << std::endl;
+//                for (int row = 0; row < num_dof; row++)
+//                {
+//                    for (int col = 0; col < num_dof; col++) {
+//                        std::cout << ", " << T(row,col);
+//                    }
+//                    std::cout << std::endl;
+//        
+//                }
+////
+//               std::cout << "End of Cycle" << std::endl;
+
+    }
         
-//    std::ofstream T_file("T_4DCurl.txt");
+//    std::ofstream T_file("Vanderp2.txt");
 //    T.PrintMatlab(T_file);
     
-    //Ti.Factor(T);
-    
-    
-//    std::ofstream Ti_file("Ti_4DCurl.txt");
-//    Ti.PrintMatlab(Ti_file);
+    //DenseMatrix T_inv(dof);
+//    std::cout << "Check Vander " << std::endl;
+//    for (int n = 0; n < dof; n++) {
+//        for (int j = 0; j < dof; j++) 
+//        {
+//            std::cout << T(n,j) << ", ";
+//        }
+//        std::cout << std::endl;
+//    }
 
-    //mfem::out << "HCurl_PentatopeElement(" << p << ") : "; Ti.TestInversion();
+    
+    DenseMatrixInverse T_temp(T);
+    T_temp.GetInverseMatrix(T_inv); // M_inv now contains M^-1
+//    std::cout << "Check Vander " << std::endl;
+//    for (int n = 0; n < dof; n++) {
+//        for (int j = 0; j < dof; j++) {
+//            std::cout << T(n,j) << ", ";
+//        }
+//        std::cout << std::endl;
+//    }
+    //T_inv.Print();
+
+    
+    
+//    std::ofstream Ti_file("invVanderp2_Construc.txt");
+//    T_inv.PrintMatlab(Ti_file);
+
+    //mfem::out << "HCurl_PentatopeElement(" << p << ") : "; T_inv.TestInversion(); // DO NOT USE ****
+    
     
 }
 
-const double HCurl_PentatopeElement::tk1[10][4] =
-{{1,0,0,0},{1,0,0,0},{1,0,0,0},{0,1,0,0},{0,1,0,0},{0,0,1,0},{-1,1,0,0},{-1,1,0,0},{-1,0,1,0},{0,-1,1,0}};
 
-const double HCurl_PentatopeElement::tk2[10][4] =
-{{-1,1,0,0},{-1,0,1,0},{-1,0,0,1},{0,-1,1,0},{0,-1,0,1},{0,0,-1,1},{0,-1,1,0},{0,-1,0,1},{0,0,-1,1},{0,0,-1,1}};
+
+
+
 
 void HCurl_PentatopeElement::CalcVShape(const IntegrationPoint &ip,
                                            DenseMatrix &shape) const
 {
     
-    /*
+    
     const int p = order;
+    int test_order = order;
     //std::cout << "p_CalcShape = " << p << std::endl;
     int reset_o;
     
@@ -445,10 +1120,14 @@ void HCurl_PentatopeElement::CalcVShape(const IntegrationPoint &ip,
     
     int o = 0;
     int num_dof = dof;
-    u.SetSize(num_dof,4*dim);
+    u.SetSize(num_dof, dim, dim);
+    DenseTensor u_hc;
+    u_hc.SetSize(num_dof, dim, dim);
+    DenseMatrix shape_pre(num_dof,4*dim);
     
     //compute barycentric coordinates as function of ip
     std::vector<double> bary_vector{ip.x, ip.y, ip.z, ip.t, (1.0 - ip.x - ip.y - ip.z - ip.t)};
+    
     
     // compute the gradient of the barycentric coords
     std::vector<double> gradL1{1,0,0,0};
@@ -484,7 +1163,7 @@ void HCurl_PentatopeElement::CalcVShape(const IntegrationPoint &ip,
                 
                 // Compute Result
                 result(i,j) = s_factor*(outer_prod_1 - outer_prod_2);
-                //std::cout << 0.5*(outer_prod_1 - outer_prod_2) << std::endl;
+                //std::cout << s_factor*(outer_prod_1 - outer_prod_2) << std::endl;
             }
             //std::cout << "New COl --------" << std::endl;
         }
@@ -495,15 +1174,26 @@ void HCurl_PentatopeElement::CalcVShape(const IntegrationPoint &ip,
     
     
     //Faces
-    for(int i=0; i<p;i++)
+//    for(int i=0; i<p;i++)
+//    {
+//        for(int j=0; j<p;j++)
+//        {
+//            for(int a=0; a<5;a++)
+//            {
+//                for(int b=0; b<5;b++)
+//                {
+//                    for(int c=0; c<5;c++)
+//                    {
+    
+    for(int a=0; a<5;a++)
     {
-        for(int j=0; j<p;j++)
+        for(int b=0; b<5;b++)
         {
-            for(int a=0; a<5;a++)
+            for(int c=0; c<5;c++)
             {
-                for(int b=0; b<5;b++)
+                for(int i=0; i<p;i++)
                 {
-                    for(int c=0; c<5;c++)
+                    for(int j=0; j<p;j++)
                     {
                         if((a<b)&&(b<c)&&((i+j)<p))
                         {
@@ -511,10 +1201,514 @@ void HCurl_PentatopeElement::CalcVShape(const IntegrationPoint &ip,
                             La = bary_vector[a];
                             Lb = bary_vector[b];
                             Lc = bary_vector[c];
+
                             
                             grad_La = gradbary_vector[a];
                             grad_Lb = gradbary_vector[b];
                             grad_Lc = gradbary_vector[c];
+                            
+                            // compute polynomials
+                            std::vector<double> Legendre_i;
+                            double x = Lb;
+                            double y = La + Lb;
+                            poly1d.CalcLegendreShifted(i, x, y, Legendre_i);
+                            
+
+                            
+                            std::vector<double> Jacobi_j;
+                            x = Lc;
+                            y = La + Lb + Lc;
+                            double alpha = 2*i + 1;
+                            poly1d.CalcJacobi(j, x, y, alpha, Jacobi_j);
+                            
+
+                            
+                            // Scaled Skew-sym outer product
+                            DenseMatrix skw_sym_outerprod_1 = skw_sym_outerprod_fnc(grad_Lb, grad_Lc);
+
+                            DenseMatrix skw_sym_outerprod_2 = skw_sym_outerprod_fnc(grad_Lc, grad_La);
+
+                            DenseMatrix skw_sym_outerprod_3 = skw_sym_outerprod_fnc(grad_La, grad_Lb);
+
+                            
+                            // Add Basis Funcitons
+                            
+                            u(o, 0, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,0) + Lb*skw_sym_outerprod_2(0,0) + Lc*skw_sym_outerprod_3(0,0));
+                                                        
+                            u(o, 0, 1) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,1) + Lb*skw_sym_outerprod_2(0,1) + Lc*skw_sym_outerprod_3(0,1));
+                                                        
+                            u(o, 0, 2) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,2) + Lb*skw_sym_outerprod_2(0,2) + Lc*skw_sym_outerprod_3(0,2));
+                                                        
+                            u(o, 0, 3) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,3) + Lb*skw_sym_outerprod_2(0,3) + Lc*skw_sym_outerprod_3(0,3));
+                            
+                            
+                            u(o, 1, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,0) + Lb*skw_sym_outerprod_2(1,0) + Lc*skw_sym_outerprod_3(1,0));
+                            
+                            u(o, 1, 1) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,1) + Lb*skw_sym_outerprod_2(1,1) + Lc*skw_sym_outerprod_3(1,1));
+                            
+                            u(o, 1, 2) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,2) + Lb*skw_sym_outerprod_2(1,2) + Lc*skw_sym_outerprod_3(1,2));
+                            
+                            u(o, 1, 3) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,3) + Lb*skw_sym_outerprod_2(1,3) + Lc*skw_sym_outerprod_3(1,3));
+                            
+
+                            u(o, 2, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,0) + Lb*skw_sym_outerprod_2(2,0) + Lc*skw_sym_outerprod_3(2,0));
+                            
+                            u(o, 2, 1) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,1) + Lb*skw_sym_outerprod_2(2,1) + Lc*skw_sym_outerprod_3(2,1));
+                            
+                            u(o, 2, 2) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,2) + Lb*skw_sym_outerprod_2(2,2) + Lc*skw_sym_outerprod_3(2,2));
+                            
+                            u(o, 2, 3) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,3) + Lb*skw_sym_outerprod_2(2,3) + Lc*skw_sym_outerprod_3(2,3));
+                            
+                            
+                            u(o, 3, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,0) + Lb*skw_sym_outerprod_2(3,0) + Lc*skw_sym_outerprod_3(3,0));
+                            
+                            u(o, 3, 1) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,1) + Lb*skw_sym_outerprod_2(3,1) + Lc*skw_sym_outerprod_3(3,1));
+                            
+                            u(o, 3, 2) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,2) + Lb*skw_sym_outerprod_2(3,2) + Lc*skw_sym_outerprod_3(3,2));
+                            
+                            u(o, 3, 3) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,3) + Lb*skw_sym_outerprod_2(3,3) + Lc*skw_sym_outerprod_3(3,3));
+                            
+                            o++;
+                            
+                            
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // end of faces
+    
+    //Facets
+    int a;
+    int b;
+    int c;
+    int d;
+    
+    for (int f=0; f<5; f++)
+    {
+        // Define each facet
+        if (f==0)
+        {
+            a = 0;
+            b = 1;
+            c = 2;
+            d = 3;
+            
+        }
+        else if(f==1)
+        {
+            // Define Facet
+            a = 0;
+            b = 2;
+            c = 1;
+            d = 4;
+            
+        }
+        // Define each facet
+        else if (f==2)
+        {
+            // Define Facet
+            a = 0;
+            b = 1;
+            c = 3;
+            d = 4;
+            
+        }
+        // Define each facet
+        else if (f==3)
+        {
+            // Define Facet
+            a = 0;
+            b = 3;
+            c = 2;
+            d = 4;
+            
+        }
+        // Define each facet
+        else if (f==4)
+        {
+            // Define Facet
+            a = 1;
+            b = 2;
+            c = 3;
+            d = 4;
+            
+        }
+        else
+        {
+            mfem_error("Invaild facet");
+        }
+        
+        
+        //int num_facesH = 0;
+        for(int i=0; i<p;i++)
+        {
+            for(int j=0; j<p;j++)
+            {
+                for(int l=1; l<p;l++)
+                {
+                    if((i+j+l)<p)
+                    {
+                        int Family = 1;
+                        
+                        if (Family == 1)
+                        {
+                            // Family I:
+                            
+                            // Define Barycentric Coordinates
+                            La = bary_vector[a];
+                            Lb = bary_vector[b];
+                            Lc = bary_vector[c];
+                            Ld = bary_vector[d];
+                            
+                            grad_La = gradbary_vector[a];
+                            grad_Lb = gradbary_vector[b];
+                            grad_Lc = gradbary_vector[c];
+                            grad_Ld = gradbary_vector[d];
+                            
+                            
+                            // compute polynomials
+                            std::vector<double> Legendre_i;
+                            double x = Lb;
+                            double y = La + Lb;
+                            poly1d.CalcLegendreShifted(i, x, y, Legendre_i);
+
+                            
+                            std::vector<double> Jacobi_j;
+                            x = Lc;
+                            y = La + Lb + Lc;
+                            double alpha = 2*i + 1;
+                            poly1d.CalcJacobi(j, x, y, alpha, Jacobi_j);
+                            
+ 
+                            
+                            std::vector<double> Int_Jacobi_l;
+                            x = Ld;
+                            y = La + Lb + Lc + Ld;
+                            alpha = 2*(i + j + 1);
+                            poly1d.CalcIntJacobi(l, x, y, alpha, Int_Jacobi_l);
+                                
+
+                            
+                            // Scaled Skew-sym outer product
+                            DenseMatrix skw_sym_outerprod_1 = skw_sym_outerprod_fnc(grad_Lb, grad_Lc);
+                            DenseMatrix skw_sym_outerprod_2 = skw_sym_outerprod_fnc(grad_Lc, grad_La);
+                            DenseMatrix skw_sym_outerprod_3 = skw_sym_outerprod_fnc(grad_La, grad_Lb);
+
+                            
+                            // Add Basis Funcitons
+                            u(o, 0, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(0,0) + Lb*skw_sym_outerprod_2(0,0) + Lc*skw_sym_outerprod_3(0,0));
+                            u(o, 0, 1) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(0,1) + Lb*skw_sym_outerprod_2(0,1) + Lc*skw_sym_outerprod_3(0,1));
+                            u(o, 0, 2) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(0,2) + Lb*skw_sym_outerprod_2(0,2) + Lc*skw_sym_outerprod_3(0,2));
+                            u(o, 0, 3) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(0,3) + Lb*skw_sym_outerprod_2(0,3) + Lc*skw_sym_outerprod_3(0,3));
+                            
+                            
+                            u(o, 1, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(1,0) + Lb*skw_sym_outerprod_2(1,0) + Lc*skw_sym_outerprod_3(1,0));
+                            u(o, 1, 1) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(1,1) + Lb*skw_sym_outerprod_2(1,1) + Lc*skw_sym_outerprod_3(1,1));
+                            u(o, 1, 2) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(1,2) + Lb*skw_sym_outerprod_2(1,2) + Lc*skw_sym_outerprod_3(1,2));
+                            u(o, 1, 3) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(1,3) + Lb*skw_sym_outerprod_2(1,3) + Lc*skw_sym_outerprod_3(1,3));
+                            
+                            
+                            u(o, 2, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(2,0) + Lb*skw_sym_outerprod_2(2,0) + Lc*skw_sym_outerprod_3(2,0));
+                            u(o, 2, 1) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(2,1) + Lb*skw_sym_outerprod_2(2,1) + Lc*skw_sym_outerprod_3(2,1));
+                            u(o, 2, 2) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1]* (La*skw_sym_outerprod_1(2,2) + Lb*skw_sym_outerprod_2(2,2) + Lc*skw_sym_outerprod_3(2,2));
+                            u(o, 2, 3) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1]* (La*skw_sym_outerprod_1(2,3) + Lb*skw_sym_outerprod_2(2,3) + Lc*skw_sym_outerprod_3(2,3));
+                            
+                            
+                            u(o, 3, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(3,0) + Lb*skw_sym_outerprod_2(3,0) + Lc*skw_sym_outerprod_3(3,0));
+                            u(o, 3, 1) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(3,1) + Lb*skw_sym_outerprod_2(3,1) + Lc*skw_sym_outerprod_3(3,1));
+                            u(o, 3, 2) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(3,2) + Lb*skw_sym_outerprod_2(3,2) + Lc*skw_sym_outerprod_3(3,2));
+                            u(o, 3, 3) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(3,3) + Lb*skw_sym_outerprod_2(3,3) + Lc*skw_sym_outerprod_3(3,3));
+                            
+
+
+                            o++;
+                        }
+                        
+                        Family++;
+                        
+                        
+                        if (Family == 2)
+                        {
+                            // Define Barycentric Coordinates
+                            La = bary_vector[b];
+                            Lb = bary_vector[c];
+                            Lc = bary_vector[d];
+                            Ld = bary_vector[a];
+                            
+                            grad_La = gradbary_vector[b];
+                            grad_Lb = gradbary_vector[c];
+                            grad_Lc = gradbary_vector[d];
+                            grad_Ld = gradbary_vector[a];
+                            
+                            // Family II:
+                            
+                            // compute polynomials
+                            std::vector<double> Legendre_i;
+                            double x = Lb;
+                            double y = La + Lb;
+                            poly1d.CalcLegendreShifted(i, x, y, Legendre_i);
+                            
+                            
+                            std::vector<double> Jacobi_j;
+                            x = Lc;
+                            y = La + Lb + Lc;
+                            double alpha = 2*i + 1;
+                            poly1d.CalcJacobi(j, x, y, alpha, Jacobi_j);
+                            
+                            
+                            std::vector<double> Int_Jacobi_l;
+                            x = Ld;
+                            y = La + Lb + Lc + Ld;
+                            alpha = 2*(i +j +1);
+                            poly1d.CalcIntJacobi(l, x, y, alpha, Int_Jacobi_l);
+                                
+                            
+                            // Scaled Skew-sym outer product
+                            DenseMatrix skw_sym_outerprod_1 = skw_sym_outerprod_fnc(grad_Lb, grad_Lc);
+                            DenseMatrix skw_sym_outerprod_2 = skw_sym_outerprod_fnc(grad_Lc, grad_La);
+                            DenseMatrix skw_sym_outerprod_3 = skw_sym_outerprod_fnc(grad_La, grad_Lb);
+                            
+
+                            // Add Basis Funcitons
+                            u(o, 0, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(0,0) + Lb*skw_sym_outerprod_2(0,0) + Lc*skw_sym_outerprod_3(0,0));
+                            u(o, 0, 1) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(0,1) + Lb*skw_sym_outerprod_2(0,1) + Lc*skw_sym_outerprod_3(0,1));
+                            u(o, 0, 2) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(0,2) + Lb*skw_sym_outerprod_2(0,2) + Lc*skw_sym_outerprod_3(0,2));
+                            u(o, 0, 3) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(0,3) + Lb*skw_sym_outerprod_2(0,3) + Lc*skw_sym_outerprod_3(0,3));
+                            
+                            
+                            u(o, 1, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(1,0) + Lb*skw_sym_outerprod_2(1,0) + Lc*skw_sym_outerprod_3(1,0));
+                            u(o, 1, 1) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(1,1) + Lb*skw_sym_outerprod_2(1,1) + Lc*skw_sym_outerprod_3(1,1));
+                            u(o, 1, 2) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(1,2) + Lb*skw_sym_outerprod_2(1,2) + Lc*skw_sym_outerprod_3(1,2));
+                            u(o, 1, 3) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(1,3) + Lb*skw_sym_outerprod_2(1,3) + Lc*skw_sym_outerprod_3(1,3));
+                            
+                            
+                            u(o, 2, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(2,0) + Lb*skw_sym_outerprod_2(2,0) + Lc*skw_sym_outerprod_3(2,0));
+                            u(o, 2, 1) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(2,1) + Lb*skw_sym_outerprod_2(2,1) + Lc*skw_sym_outerprod_3(2,1));
+                            u(o, 2, 2) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1]* (La*skw_sym_outerprod_1(2,2) + Lb*skw_sym_outerprod_2(2,2) + Lc*skw_sym_outerprod_3(2,2));
+                            u(o, 2, 3) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1]* (La*skw_sym_outerprod_1(2,3) + Lb*skw_sym_outerprod_2(2,3) + Lc*skw_sym_outerprod_3(2,3));
+                            
+                            
+                            u(o, 3, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(3,0) + Lb*skw_sym_outerprod_2(3,0) + Lc*skw_sym_outerprod_3(3,0));
+                            u(o, 3, 1) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(3,1) + Lb*skw_sym_outerprod_2(3,1) + Lc*skw_sym_outerprod_3(3,1));
+                            u(o, 3, 2) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(3,2) + Lb*skw_sym_outerprod_2(3,2) + Lc*skw_sym_outerprod_3(3,2));
+                            u(o, 3, 3) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(3,3) + Lb*skw_sym_outerprod_2(3,3) + Lc*skw_sym_outerprod_3(3,3));
+                            
+
+                            
+
+                            o++;
+                            
+                        }
+                        
+                        Family++;
+                        
+                        if (Family == 3)
+                        {
+                            
+                            // Define Barycentric Coordinates
+                            La = bary_vector[c];
+                            Lb = bary_vector[d];
+                            Lc = bary_vector[a];
+                            Ld = bary_vector[b];
+                            
+                            grad_La = gradbary_vector[c];
+                            grad_Lb = gradbary_vector[d];
+                            grad_Lc = gradbary_vector[a];
+                            grad_Ld = gradbary_vector[b];
+                            
+                            // Family III:
+                            
+                            // compute polynomials
+                            std::vector<double> Legendre_i;
+                            double x = Lb;
+                            double y = La + Lb;
+                            poly1d.CalcLegendreShifted(i, x, y, Legendre_i);
+                            
+                            
+                            std::vector<double> Jacobi_j;
+                            x = Lc;
+                            y = La + Lb+ Lc;
+                            double alpha = 2*i + 1;
+                            poly1d.CalcJacobi(j, x, y, alpha, Jacobi_j);
+
+                            
+                            std::vector<double> Int_Jacobi_l;
+                            x = Ld;
+                            y = La + Lb + Lc + Ld;
+                            alpha = 2*(i +j +1);
+                            poly1d.CalcIntJacobi(l, x, y, alpha, Int_Jacobi_l);
+                            
+
+                            
+                            // Scaled Skew-sym outer product
+                            DenseMatrix skw_sym_outerprod_1 = skw_sym_outerprod_fnc(grad_Lb, grad_Lc);
+                            DenseMatrix skw_sym_outerprod_2 = skw_sym_outerprod_fnc(grad_Lc, grad_La);
+                            DenseMatrix skw_sym_outerprod_3 = skw_sym_outerprod_fnc(grad_La, grad_Lb);
+
+                            // Add Basis Funcitons
+                            u(o, 0, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(0,0) + Lb*skw_sym_outerprod_2(0,0) + Lc*skw_sym_outerprod_3(0,0));
+                            u(o, 0, 1) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(0,1) + Lb*skw_sym_outerprod_2(0,1) + Lc*skw_sym_outerprod_3(0,1));
+                            u(o, 0, 2) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(0,2) + Lb*skw_sym_outerprod_2(0,2) + Lc*skw_sym_outerprod_3(0,2));
+                            u(o, 0, 3) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(0,3) + Lb*skw_sym_outerprod_2(0,3) + Lc*skw_sym_outerprod_3(0,3));
+    
+                            u(o, 1, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(1,0) + Lb*skw_sym_outerprod_2(1,0) + Lc*skw_sym_outerprod_3(1,0));
+                            u(o, 1, 1) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(1,1) + Lb*skw_sym_outerprod_2(1,1) + Lc*skw_sym_outerprod_3(1,1));
+                            u(o, 1, 2) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(1,2) + Lb*skw_sym_outerprod_2(1,2) + Lc*skw_sym_outerprod_3(1,2));
+                            u(o, 1, 3) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(1,3) + Lb*skw_sym_outerprod_2(1,3) + Lc*skw_sym_outerprod_3(1,3));
+                            
+                            u(o, 2, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(2,0) + Lb*skw_sym_outerprod_2(2,0) + Lc*skw_sym_outerprod_3(2,0));
+                            u(o, 2, 1) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(2,1) + Lb*skw_sym_outerprod_2(2,1) + Lc*skw_sym_outerprod_3(2,1));
+                            u(o, 2, 2) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1]* (La*skw_sym_outerprod_1(2,2) + Lb*skw_sym_outerprod_2(2,2) + Lc*skw_sym_outerprod_3(2,2));
+                            u(o, 2, 3) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1]* (La*skw_sym_outerprod_1(2,3) + Lb*skw_sym_outerprod_2(2,3) + Lc*skw_sym_outerprod_3(2,3));
+                            
+                            u(o, 3, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(3,0) + Lb*skw_sym_outerprod_2(3,0) + Lc*skw_sym_outerprod_3(3,0));
+                            u(o, 3, 1) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(3,1) + Lb*skw_sym_outerprod_2(3,1) + Lc*skw_sym_outerprod_3(3,1));
+                            u(o, 3, 2) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(3,2) + Lb*skw_sym_outerprod_2(3,2) + Lc*skw_sym_outerprod_3(3,2));
+                            u(o, 3, 3) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (La*skw_sym_outerprod_1(3,3) + Lb*skw_sym_outerprod_2(3,3) + Lc*skw_sym_outerprod_3(3,3));
+                            
+
+                            
+                            o++;
+                            
+                        }
+                        
+                    }
+                }
+            }
+        }
+    }// end of Facets
+    
+    //Interiors
+    for (int r = 0; r<6; r++)
+    {
+        if (r ==0)
+        {
+            //case where (a,b,c,d,e) = (0,1,2,3,4)
+            // define lamda
+            La = bary_vector[0];
+            Lb = bary_vector[1];
+            Lc = bary_vector[2];
+            Ld = bary_vector[3];
+            Le = bary_vector[4];
+            
+            // define a,b,c,d
+            a = 0;
+            b = 1;
+            c = 2;
+            d = 3;
+            
+        }
+        else if (r==1)
+        {
+            //case where (a,b,c,d,e) = (1,2,3,4,0)
+            // define lamda
+            La = bary_vector[1];
+            Lb = bary_vector[2];
+            Lc = bary_vector[3];
+            Ld = bary_vector[4];
+            Le = bary_vector[0];
+            
+            // define a,b,c,d
+            a = 1;
+            b = 2;
+            c = 3;
+            d = 4;
+            
+            
+        }
+        else if (r==2)
+        {
+            //case where (a,b,c,d,e) = (2,3,4,0,1)
+            // define lamda
+            La = bary_vector[2];
+            Lb = bary_vector[3];
+            Lc = bary_vector[4];
+            Ld = bary_vector[0];
+            Le = bary_vector[1];
+            
+            // define a,b,c,d
+            a = 2;
+            b = 3;
+            c = 4;
+            d = 0;
+            
+        }
+        else if (r==3)
+        {
+            //case where (a,b,c,d,e) = (3,4,0,1,2)
+            // define lamda
+            La = bary_vector[3];
+            Lb = bary_vector[4];
+            Lc = bary_vector[0];
+            Ld = bary_vector[1];
+            Le = bary_vector[2];
+            
+            // define a,b,c,d
+            a = 3;
+            b = 4;
+            c = 0;
+            d = 1;
+            
+        }
+        else if (r==4)
+        {
+            //case where (a,b,c,d,e) = (4,0,1,2,3)
+            // define lamda
+            La = bary_vector[4];
+            Lb = bary_vector[0];
+            Lc = bary_vector[1];
+            Ld = bary_vector[2];
+            Le = bary_vector[3];
+            
+            // define a,b,c,d
+            a = 4;
+            b = 0;
+            c = 1;
+            d = 2;
+            
+            
+        }
+        else if (r==5)
+        {
+            //case where (a,b,c,d,e) = (0,1,3,2,4)
+            // define lamda
+            La = bary_vector[0];
+            Lb = bary_vector[1];
+            Lc = bary_vector[3];
+            Ld = bary_vector[2];
+            Le = bary_vector[4];
+            
+            // define a,b,c,d
+            a = 0;
+            b = 1;
+            c = 3;
+            d = 2;
+            
+        }
+        else
+        {
+            mfem_error("Invaild Bubble");
+        }
+        
+        for(int i=0; i<p;i++)
+        {
+            for(int j=0; j<p;j++)
+            {
+                for(int l=1; l<p;l++)
+                {
+                    for (int m=1; m<p; m++)
+                    {
+                        if((i+j+l+m)<p)
+                        {
+                            
+                            // Define Barycentric Coordinates
+                            grad_La = gradbary_vector[a];
+                            grad_Lb = gradbary_vector[b];
+                            grad_Lc = gradbary_vector[c];
+                            grad_Ld = gradbary_vector[d];
+                            
                             
                             // compute polynomials
                             std::vector<double> Legendre_i;
@@ -528,257 +1722,152 @@ void HCurl_PentatopeElement::CalcVShape(const IntegrationPoint &ip,
                             double alpha = 2*i + 1;
                             poly1d.CalcJacobi(j, x, y, alpha, Jacobi_j);
                             
+                            
+                            std::vector<double> Int_Jacobi_l;
+                            x = Ld;
+                            y = La + Lb + Lc + Ld;
+                            alpha = 2*(i + j + 1);
+                            poly1d.CalcIntJacobi(l, x, y, alpha, Int_Jacobi_l);
+                            
+                            std::vector<double> Int_Jacobi_m;
+                            x = Le;
+                            y = 1.0;
+                            alpha = 2*(i + j + l);
+                            poly1d.CalcIntJacobi(m, x, y, alpha, Int_Jacobi_m);
+                            
+                            
                             // Scaled Skew-sym outer product
                             DenseMatrix skw_sym_outerprod_1 = skw_sym_outerprod_fnc(grad_Lb, grad_Lc);
                             DenseMatrix skw_sym_outerprod_2 = skw_sym_outerprod_fnc(grad_Lc, grad_La);
                             DenseMatrix skw_sym_outerprod_3 = skw_sym_outerprod_fnc(grad_La, grad_Lb);
-
+                            
                             
                             // Add Basis Funcitons
-//                            u(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,0) + Lb*skw_sym_outerprod_2(0,0) + Lc*skw_sym_outerprod_3(0,0));
-//                            u(o, 1) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,1) + Lb*skw_sym_outerprod_2(0,1) + Lc*skw_sym_outerprod_3(0,1));
-//                            u(o, 2) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,2) + Lb*skw_sym_outerprod_2(0,2) + Lc*skw_sym_outerprod_3(0,2));
-//                            u(o, 3) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,3) + Lb*skw_sym_outerprod_2(0,3) + Lc*skw_sym_outerprod_3(0,3));
-//                            u(o, 4) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,0) + Lb*skw_sym_outerprod_2(1,0) + Lc*skw_sym_outerprod_3(1,0));
-//                            u(o, 5) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,1) + Lb*skw_sym_outerprod_2(1,1) + Lc*skw_sym_outerprod_3(1,1));
-//                            u(o, 6) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,2) + Lb*skw_sym_outerprod_2(1,2) + Lc*skw_sym_outerprod_3(1,2));
-//                            u(o, 7) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,3) + Lb*skw_sym_outerprod_2(1,3) + Lc*skw_sym_outerprod_3(1,3));
-//                            u(o, 8) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,0) + Lb*skw_sym_outerprod_2(2,0) + Lc*skw_sym_outerprod_3(2,0));
-//                            u(o, 9) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,1) + Lb*skw_sym_outerprod_2(2,1) + Lc*skw_sym_outerprod_3(2,1));
-//                            u(o, 10) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,2) + Lb*skw_sym_outerprod_2(2,2) + Lc*skw_sym_outerprod_3(2,2));
-//                            u(o, 11) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,3) + Lb*skw_sym_outerprod_2(2,3) + Lc*skw_sym_outerprod_3(2,3));
-//                            u(o, 12) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,0) + Lb*skw_sym_outerprod_2(3,0) + Lc*skw_sym_outerprod_3(3,0));
-//                            u(o, 13) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,1) + Lb*skw_sym_outerprod_2(3,1) + Lc*skw_sym_outerprod_3(3,1));
-//                            u(o, 14) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,2) + Lb*skw_sym_outerprod_2(3,2) + Lc*skw_sym_outerprod_3(3,2));
-//                            u(o, 15) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,3) + Lb*skw_sym_outerprod_2(3,3) + Lc*skw_sym_outerprod_3(3,3));
-
-                            shape(o, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,0) + Lb*skw_sym_outerprod_2(0,0) + Lc*skw_sym_outerprod_3(0,0));
-                            shape(o, 1) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,1) + Lb*skw_sym_outerprod_2(0,1) + Lc*skw_sym_outerprod_3(0,1));
-                            shape(o, 2) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,2) + Lb*skw_sym_outerprod_2(0,2) + Lc*skw_sym_outerprod_3(0,2));
-                            shape(o, 3) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(0,3) + Lb*skw_sym_outerprod_2(0,3) + Lc*skw_sym_outerprod_3(0,3));
-                            shape(o, 4) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,0) + Lb*skw_sym_outerprod_2(1,0) + Lc*skw_sym_outerprod_3(1,0));
-                            shape(o, 5) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,1) + Lb*skw_sym_outerprod_2(1,1) + Lc*skw_sym_outerprod_3(1,1));
-                            shape(o, 6) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,2) + Lb*skw_sym_outerprod_2(1,2) + Lc*skw_sym_outerprod_3(1,2));
-                            shape(o, 7) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(1,3) + Lb*skw_sym_outerprod_2(1,3) + Lc*skw_sym_outerprod_3(1,3));
-                            shape(o, 8) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,0) + Lb*skw_sym_outerprod_2(2,0) + Lc*skw_sym_outerprod_3(2,0));
-                            shape(o, 9) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,1) + Lb*skw_sym_outerprod_2(2,1) + Lc*skw_sym_outerprod_3(2,1));
-                            shape(o, 10) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,2) + Lb*skw_sym_outerprod_2(2,2) + Lc*skw_sym_outerprod_3(2,2));
-                            shape(o, 11) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(2,3) + Lb*skw_sym_outerprod_2(2,3) + Lc*skw_sym_outerprod_3(2,3));
-                            shape(o, 12) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,0) + Lb*skw_sym_outerprod_2(3,0) + Lc*skw_sym_outerprod_3(3,0));
-                            shape(o, 13) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,1) + Lb*skw_sym_outerprod_2(3,1) + Lc*skw_sym_outerprod_3(3,1));
-                            shape(o, 14) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,2) + Lb*skw_sym_outerprod_2(3,2) + Lc*skw_sym_outerprod_3(3,2));
-                            shape(o, 15) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (La*skw_sym_outerprod_1(3,3) + Lb*skw_sym_outerprod_2(3,3) + Lc*skw_sym_outerprod_3(3,3));
-                            o++;
+                            u(o, 0, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(0,0) + Lb*skw_sym_outerprod_2(0,0) + Lc*skw_sym_outerprod_3(0,0));
+                            u(o, 0, 1) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(0,1) + Lb*skw_sym_outerprod_2(0,1) + Lc*skw_sym_outerprod_3(0,1));
+                            u(o, 0, 2) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(0,2) + Lb*skw_sym_outerprod_2(0,2) + Lc*skw_sym_outerprod_3(0,2));
+                            u(o, 0, 3) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(0,3) + Lb*skw_sym_outerprod_2(0,3) + Lc*skw_sym_outerprod_3(0,3));
+    
+                            u(o, 1, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(1,0) + Lb*skw_sym_outerprod_2(1,0) + Lc*skw_sym_outerprod_3(1,0));
+                            u(o, 1, 1) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(1,1) + Lb*skw_sym_outerprod_2(1,1) + Lc*skw_sym_outerprod_3(1,1));
+                            u(o, 1, 2) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(1,2) + Lb*skw_sym_outerprod_2(1,2) + Lc*skw_sym_outerprod_3(1,2));
+                            u(o, 1, 3) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(1,3) + Lb*skw_sym_outerprod_2(1,3) + Lc*skw_sym_outerprod_3(1,3));
                             
+                            u(o, 2, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(2,0) + Lb*skw_sym_outerprod_2(2,0) + Lc*skw_sym_outerprod_3(2,0));
+                            u(o, 2, 1) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(2,1) + Lb*skw_sym_outerprod_2(2,1) + Lc*skw_sym_outerprod_3(2,1));
+                            u(o, 2, 2) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(2,2) + Lb*skw_sym_outerprod_2(2,2) + Lc*skw_sym_outerprod_3(2,2));
+                            u(o, 2, 3) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(2,3) + Lb*skw_sym_outerprod_2(2,3) + Lc*skw_sym_outerprod_3(2,3));
+                            
+                            u(o, 3, 0) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(3,0) + Lb*skw_sym_outerprod_2(3,0) + Lc*skw_sym_outerprod_3(3,0));
+                            u(o, 3, 1) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(3,1) + Lb*skw_sym_outerprod_2(3,1) + Lc*skw_sym_outerprod_3(3,1));
+                            u(o, 3, 2) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(3,2) + Lb*skw_sym_outerprod_2(3,2) + Lc*skw_sym_outerprod_3(3,2));
+                            u(o, 3, 3) = Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * (La*skw_sym_outerprod_1(3,3) + Lb*skw_sym_outerprod_2(3,3) + Lc*skw_sym_outerprod_3(3,3));
+                            
+
+                            
+                            o++;
                             
                         }
                     }
                 }
             }
         }
-    }
-    // end of faces
+        
+    }// End of Interiors
     
-    for (int mod; mod < 10; mod++)
+    
+//    DenseMatrix u_unroll (num_dof,4*dim);
+//    // Now unroll and store in shape
+//    for (int l=0; l < num_dof; l++)
+//    {
+//        int N = 0;
+//        for (int j=0; j<dim; j++)
+//        {
+//            for (int k=0; k<dim; k++)
+//            {
+//                u_unroll(l,N) = u(l,j,k);
+//                N++;
+//            }
+//            
+//        }
+//    }
+//    
+//    std::ofstream A_file("Vanderinv_pre.txt");
+//    T_inv.PrintMatlab(A_file);
+    
+
+
+    
+    DenseTensor shape_Ten(dof,dim,dim);
+    
+    
+    // Reorder Code
+//    std::vector<int> map = {2,4,5,7,8,9,0,1,3,6};
+//
+//    double sf = 0.5;
+//    for (int l=0; l < num_dof; l++)
+//    {
+//        int N = 0;
+//        // index into map
+//        int m_ind = map[l];
+//        for (int j=0; j<dim; j++)
+//        {
+//            for (int k=0; k<dim; k++)
+//            {
+//                shape(l,N) = sf * u(m_ind,j,k);
+//                N++;
+//            }
+//            
+//        }
+//    }
+    
+//    Real Code
+    for (int l=0; l < num_dof; l++)
     {
-        std::cout << "Start -----" << std::endl;
-        std::cout << shape(mod,0) << std::endl;
-        std::cout << shape(mod,1) << std::endl;
-        std::cout << shape(mod,2) << std::endl;
-        std::cout << shape(mod,3) << std::endl;
-        std::cout << shape(mod,4) << std::endl;
-        std::cout << shape(mod,5) << std::endl;
-        std::cout << shape(mod,6) << std::endl;
-        std::cout << shape(mod,7) << std::endl;
-        std::cout << shape(mod,8) << std::endl;
-        std::cout << shape(mod,9) << std::endl;
-        std::cout << shape(mod,10) << std::endl;
-        std::cout << shape(mod,11) << std::endl;
-        std::cout << shape(mod,12) << std::endl;
-        std::cout << shape(mod,13) << std::endl;
-        std::cout << shape(mod,14) << std::endl;
-        std::cout << shape(mod,15) << std::endl;
-
-
+        for (int j=0; j<dim; j++)
+        {
+            for (int k=0; k<dim; k++)
+            {
+                
+                double sum = 0.0;
+                for (int m=0; m < num_dof; m++)
+                {
+                    sum += T_inv(l,m) * u(m,j,k); // original
+                    //sum += T_inv(m,l) * u(m,j,k); // Dr. W change
+                }
+                shape_Ten(l,j,k) = sum;
+            }
+        }
+    }
+    //std::cout << "Stop" << std::endl;
+    //std::cout << "Shape end of Vshpae: " << std::endl;
+    double sf = 0.5;
+    // Now unroll and store in shape
+    for (int l=0; l < num_dof; l++)
+    {
+        int N = 0;
+        for (int j=0; j<dim; j++)
+        {
+            for (int k=0; k<dim; k++)
+            {
+                shape(l,N) = sf * shape_Ten(l,j,k);
+                N++;
+            }
+            
+        }
     }
     
-    std::cout << "The End " << std::endl;*/
-    
-    //Ti.Mult(u, shape);
+    //std::ofstream B_file("Shape2_Vshape.txt");
+    //std::ofstream A_file("invVander2_Vshape.txt");
 
-    double x1 = ip.x, x2 = ip.y, x3 = ip.z, x4 = ip.t;
+    //shape.PrintMatlab(B_file);
 
-    shape(0,0) = 0.;
-    shape(0,1) = 0.;
-    shape(0,2) = x1;
-    shape(0,3) = -1.*x1;
-    shape(0,4) = 0.;
-    shape(0,5) = 0.;
-    shape(0,6) = x2;
-    shape(0,7) = -1.*x2;
-    shape(0,8) = -1.*x1;
-    shape(0,9) = -1.*x2;
-    shape(0,10) = 0.;
-    shape(0,11) = 1. - 1.*x3 - 1.*x4;
-    shape(0,12) = x1;
-    shape(0,13) = x2;
-    shape(0,14) = -1. + x3 + x4;
-    shape(0,15) = 0.;
 
-    shape(1,0) = 0.;
-    shape(1,1) = -1.*x1;
-    shape(1,2) = 0.;
-    shape(1,3) = x1;
-    shape(1,4) = x1;
-    shape(1,5) = 0.;
-    shape(1,6) = x3;
-    shape(1,7) = -1. + x2 + x4;
-    shape(1,8) = 0.;
-    shape(1,9) = -1.*x3;
-    shape(1,10) = 0.;
-    shape(1,11) = x3;
-    shape(1,12) = -1.*x1;
-    shape(1,13) = 1. - 1.*x2 - 1.*x4;
-    shape(1,14) = -1.*x3;
-    shape(1,15) = 0.;
-
-    shape(2,0) = 0.;
-    shape(2,1) = x1;
-    shape(2,2) = -1.*x1;
-    shape(2,3) = 0.;
-    shape(2,4) = -1.*x1;
-    shape(2,5) = 0.;
-    shape(2,6) = 1. - 1.*x2 - 1.*x3;
-    shape(2,7) = -1.*x4;
-    shape(2,8) = x1;
-    shape(2,9) = -1. + x2 + x3;
-    shape(2,10) = 0.;
-    shape(2,11) = x4;
-    shape(2,12) = 0.;
-    shape(2,13) = x4;
-    shape(2,14) = -1.*x4;
-    shape(2,15) = 0.;
-
-    shape(3,0) = 0.;
-    shape(3,1) = -1.*x2;
-    shape(3,2) = -1.*x3;
-    shape(3,3) = 1. - 1.*x1 - 1.*x4;
-    shape(3,4) = x2;
-    shape(3,5) = 0.;
-    shape(3,6) = 0.;
-    shape(3,7) = -1.*x2;
-    shape(3,8) = x3;
-    shape(3,9) = 0.;
-    shape(3,10) = 0.;
-    shape(3,11) = -1.*x3;
-    shape(3,12) = -1. + x1 + x4;
-    shape(3,13) = x2;
-    shape(3,14) = x3;
-    shape(3,15) = 0.;
-
-    shape(4,0) = 0.;
-    shape(4,1) = x2;
-    shape(4,2) = -1. + x1 + x3;
-    shape(4,3) = x4;
-    shape(4,4) = -1.*x2;
-    shape(4,5) = 0.;
-    shape(4,6) = x2;
-    shape(4,7) = 0.;
-    shape(4,8) = 1. - 1.*x1 - 1.*x3;
-    shape(4,9) = -1.*x2;
-    shape(4,10) = 0.;
-    shape(4,11) = -1.*x4;
-    shape(4,12) = -1.*x4;
-    shape(4,13) = 0.;
-    shape(4,14) = x4;
-    shape(4,15) = 0.;
-
-    shape(5,0) = 0.;
-    shape(5,1) = 1. - 1.*x1 - 1.*x2;
-    shape(5,2) = -1.*x3;
-    shape(5,3) = -1.*x4;
-    shape(5,4) = -1. + x1 + x2;
-    shape(5,5) = 0.;
-    shape(5,6) = x3;
-    shape(5,7) = x4;
-    shape(5,8) = x3;
-    shape(5,9) = -1.*x3;
-    shape(5,10) = 0.;
-    shape(5,11) = 0.;
-    shape(5,12) = x4;
-    shape(5,13) = -1.*x4;
-    shape(5,14) = 0.;
-    shape(5,15) = 0.;
-
-    shape(6,0) = 0.;
-    shape(6,1) = 0.;
-    shape(6,2) = 0.;
-    shape(6,3) = x1;
-    shape(6,4) = 0.;
-    shape(6,5) = 0.;
-    shape(6,6) = 0.;
-    shape(6,7) = x2;
-    shape(6,8) = 0.;
-    shape(6,9) = 0.;
-    shape(6,10) = 0.;
-    shape(6,11) = x3;
-    shape(6,12) = -1.*x1;
-    shape(6,13) = -1.*x2;
-    shape(6,14) = -1.*x3;
-    shape(6,15) = 0.;
-
-    shape(7,0) = 0.;
-    shape(7,1) = 0.;
-    shape(7,2) = -1.*x1;
-    shape(7,3) = 0.;
-    shape(7,4) = 0.;
-    shape(7,5) = 0.;
-    shape(7,6) = -1.*x2;
-    shape(7,7) = 0.;
-    shape(7,8) = x1;
-    shape(7,9) = x2;
-    shape(7,10) = 0.;
-    shape(7,11) = x4;
-    shape(7,12) = 0.;
-    shape(7,13) = 0.;
-    shape(7,14) = -1.*x4;
-    shape(7,15) = 0.;
-
-    shape(8,0) = 0.;
-    shape(8,1) = x1;
-    shape(8,2) = 0.;
-    shape(8,3) = 0.;
-    shape(8,4) = -1.*x1;
-    shape(8,5) = 0.;
-    shape(8,6) = -1.*x3;
-    shape(8,7) = -1.*x4;
-    shape(8,8) = 0.;
-    shape(8,9) = x3;
-    shape(8,10) = 0.;
-    shape(8,11) = 0.;
-    shape(8,12) = 0.;
-    shape(8,13) = x4;
-    shape(8,14) = 0.;
-    shape(8,15) = 0.;
-
-    shape(9,0) = 0.;
-    shape(9,1) = x2;
-    shape(9,2) = x3;
-    shape(9,3) = x4;
-    shape(9,4) = -1.*x2;
-    shape(9,5) = 0.;
-    shape(9,6) = 0.;
-    shape(9,7) = 0.;
-    shape(9,8) = -1.*x3;
-    shape(9,9) = 0.;
-    shape(9,10) = 0.;
-    shape(9,11) = 0.;
-    shape(9,12) = -1.*x4;
-    shape(9,13) = 0.;
-    shape(9,14) = 0.;
-    shape(9,15) = 0.;
 
 }
+
+
+
 
 void HCurl_PentatopeElement::CalcCurlShape(const IntegrationPoint &ip,
                                                  DenseMatrix &Curlshape) const
@@ -792,7 +1881,7 @@ void HCurl_PentatopeElement::CalcCurlShape(const IntegrationPoint &ip,
 #endif
     int size_ip = Nodes.Size();
     //int num_func =
-    Curlu.SetSize(dof, int(6));
+    Curlu.SetSize(dof, int(4));
 
     //std::cout << "Int Point = " << ip.x << ", " << ip.y << ", " << ip.z << ", " << ip.t << std::endl;
     
@@ -844,12 +1933,1271 @@ void HCurl_PentatopeElement::CalcCurlShape(const IntegrationPoint &ip,
         
         return result;
     }; // end of lamda function
+    
+    // Faces
+    for(int a=0; a<5;a++)
+    {
+        for(int b=0; b<5;b++)
+        {
+            for(int c=0; c<5;c++)
+            {
+                for(int i=0; i<p;i++)
+                {
+                    for(int j=0; j<p;j++)
+                    {
+                        if((a<b)&&(b<c)&&((i+j)<p))
+                        {
+                            
+                            La = bary_vector[a];
+                            Lb = bary_vector[b];
+                            Lc = bary_vector[c];
+
+                            
+                            grad_La = gradbary_vector[a];
+                            grad_Lb = gradbary_vector[b];
+                            grad_Lc = gradbary_vector[c];
+                            
+                            // compute polynomials
+                            std::vector<double> Legendre_i;
+                            std::vector<double> Legendre_i_dx;
+                            std::vector<double> Legendre_i_dt;
+                            double x = Lb;
+                            double y = La + Lb;
+                            //poly1d.CalcLegendreShifted(i, x, y, Legendre_i);
+                            poly1d.CalcScaledLegendreDerivative(i, x, y, Legendre_i, Legendre_i_dx, Legendre_i_dt);
+
+                            
+
+                            
+                            std::vector<double> Jacobi_j;
+                            std::vector<double> Jacobi_j_ref;
+                            x = Lc;
+                            y = La + Lb + Lc;
+                            double alpha = 2*i + 1;
+                            poly1d.CalcJacobi(j, x, y, alpha, Jacobi_j);
+                            // Derivative Jacobi Poly
+                            std::vector<double> Jacobi_j_dx;
+                            std::vector<double> Jacobi_j_dt;
+                            poly1d.CalcScaledJacobiDerivative(j, alpha, x, y, Jacobi_j_ref, Jacobi_j_dx, Jacobi_j_dt);
+                            
+
+                            
+                            // Scaled Skew-sym outer product
+                            DenseMatrix skw_sym_outerprod_1 = skw_sym_outerprod_fnc(grad_Lb, grad_Lc);
+
+                            DenseMatrix skw_sym_outerprod_2 = skw_sym_outerprod_fnc(grad_Lc, grad_La);
+
+                            DenseMatrix skw_sym_outerprod_3 = skw_sym_outerprod_fnc(grad_La, grad_Lb);
+                            
+                            
+                            
+                            // grad of Legendre and Jacobi Polynomials (scalar part)
+                            double dscalar_x = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[0] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[0] + grad_Lb[0])) * Jacobi_j[Jacobi_j.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[0] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[0] + grad_Lb[0] + grad_Lc[0]) );
+                            
+                            
+                            double dscalar_y = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[1] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[1] + grad_Lb[1])) * Jacobi_j[Jacobi_j.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[1] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[1] + grad_Lb[1] + grad_Lc[1]) );
+                            
+                            
+                            double dscalar_z = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[2] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[2] + grad_Lb[2])) * Jacobi_j[Jacobi_j.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[2] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[2] + grad_Lb[2] + grad_Lc[2]) );
+                            
+                            
+                            double dscalar_t = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[3] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[3] + grad_Lb[3])) * Jacobi_j[Jacobi_j.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[3] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[3] + grad_Lb[3] + grad_Lc[3]) );
+                            
+                            
+                            // curl of skw-sym part
+                            
+                            std::vector<double> F_vec(4);
+                            // x-component
+                            F_vec[0] = 2.0 * ( grad_La[1]*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + grad_Lb[1]*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + grad_Lc[1]*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * ( grad_La[2]*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + grad_Lb[2]*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + grad_Lc[2]*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * ( grad_La[3]*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + grad_Lb[3]*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + grad_Lc[3]*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) );
+                            
+                            
+                            // y-component
+                            F_vec[1] = -2.0 * ( grad_La[0]*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + grad_Lb[0]*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + grad_Lc[0]*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * ( grad_La[2]*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + grad_Lb[2]*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + grad_Lc[2]*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * ( grad_La[3]*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + grad_Lb[3]*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + grad_Lc[3]*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) );
+                            
+                            
+                            // z-component
+                            F_vec[2] = 2.0 * ( grad_La[0]*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + grad_Lb[0]*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + grad_Lc[0]*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * ( grad_La[1]*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + grad_Lb[1]*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + grad_Lc[1]*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * ( grad_La[3]*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + grad_Lb[3]*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + grad_Lc[3]*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
+                            
+                            
+                            // t-component
+                            F_vec[3] = -2.0 * ( grad_La[0]*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + grad_Lb[0]*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + grad_Lc[0]*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) )
+                             
+                            
+                            + 2.0 * ( grad_La[1]*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + grad_Lb[1]*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + grad_Lc[1]*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) )
+                            
+                            
+                            - 2.0 * ( grad_La[2]*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + grad_Lb[2]*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + grad_Lc[2]*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
+                            
+                            
+                            // grad(scalar-part) X skw-sym_mat
+                            
+                            std::vector<double> McrossN(4);
+                            // x-component
+                            McrossN[0] = 2.0 * dscalar_y * ( La*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + Lb*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + Lc*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * dscalar_z * ( La*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + Lb*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + Lc*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * dscalar_t * ( La*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + Lb*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + Lc*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) );
+                            
+                            
+                            // y-component
+                            McrossN[1] = -2.0 * dscalar_x * ( La*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + Lb*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + Lc*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * dscalar_z * ( La*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + Lb*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + Lc*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * dscalar_t * ( La*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + Lb*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + Lc*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) );
+                            
+                            
+                            // z-component
+                            McrossN[2] = 2.0 * dscalar_x * ( La*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + Lb*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + Lc*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * dscalar_y * ( La*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + Lb*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + Lc*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * dscalar_t * ( La*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + Lb*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + Lc*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
+                            
+                            
+                            // t-component
+                            McrossN[3] = -2.0 * dscalar_x * ( La*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + Lb*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + Lc*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) )
+                             
+                            
+                            + 2.0 * dscalar_y * ( La*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + Lb*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + Lc*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) )
+                            
+                            
+                            - 2.0 * dscalar_z * ( La*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + Lb*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + Lc*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
+                            
+                            
+                            
+                            // Add Basis Funcitons
+                            double s_factor = 0.5;
+                            
+                            Curlu(o, 0) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * F_vec[0]) + McrossN[0] );
+                            
+                            Curlu(o, 1) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * F_vec[1]) + McrossN[1] );
+
+                            Curlu(o, 2) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * F_vec[2]) + McrossN[2] );
+
+                            Curlu(o, 3) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * F_vec[3]) + McrossN[3] );
+                            
 
 
+                            o++;
+                            
+                            
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // end of faces
+    
+    //Facets
+    int a;
+    int b;
+    int c;
+    int d;
+    
+    for (int f=0; f<5; f++)
+    {
+        // Define each facet
+        if (f==0)
+        {
+            a = 0;
+            b = 1;
+            c = 2;
+            d = 3;
+            
+        }
+        else if(f==1)
+        {
+            // Define Facet
+            a = 0;
+            b = 2;
+            c = 1;
+            d = 4;
+            
+        }
+        // Define each facet
+        else if (f==2)
+        {
+            // Define Facet
+            a = 0;
+            b = 1;
+            c = 3;
+            d = 4;
+            
+        }
+        // Define each facet
+        else if (f==3)
+        {
+            // Define Facet
+            a = 0;
+            b = 3;
+            c = 2;
+            d = 4;
+            
+        }
+        // Define each facet
+        else if (f==4)
+        {
+            // Define Facet
+            a = 1;
+            b = 2;
+            c = 3;
+            d = 4;
+            
+        }
+        else
+        {
+            mfem_error("Invaild facet");
+        }
+        
+        
+        for(int i=0; i<p;i++)
+        {
+            for(int j=0; j<p;j++)
+            {
+                for(int l=1; l<p;l++)
+                {
+                    if((i+j+l)<p)
+                    {
+                        int Family = 1;
+                        
+                        if (Family == 1)
+                        {
+                            // Family I:
+                            
+                            La = bary_vector[a];
+                            Lb = bary_vector[b];
+                            Lc = bary_vector[c];
+                            Ld = bary_vector[d];
+
+
+                            
+                            grad_La = gradbary_vector[a];
+                            grad_Lb = gradbary_vector[b];
+                            grad_Lc = gradbary_vector[c];
+                            grad_Ld = gradbary_vector[d];
+
+                            
+                            // compute polynomials
+                            std::vector<double> Legendre_i;
+                            std::vector<double> Legendre_i_dx;
+                            std::vector<double> Legendre_i_dt;
+                            double x = Lb;
+                            double y = La + Lb;
+                            //poly1d.CalcLegendreShifted(i, x, y, Legendre_i);
+                            poly1d.CalcScaledLegendreDerivative(i, x, y, Legendre_i, Legendre_i_dx, Legendre_i_dt);
+
+                            
+
+                            
+                            std::vector<double> Jacobi_j;
+                            std::vector<double> Jacobi_j_ref;
+                            x = Lc;
+                            y = La + Lb + Lc;
+                            double alpha = 2*i + 1;
+                            poly1d.CalcJacobi(j, x, y, alpha, Jacobi_j);
+                            // Derivative Jacobi Poly
+                            std::vector<double> Jacobi_j_dx;
+                            std::vector<double> Jacobi_j_dt;
+                            poly1d.CalcScaledJacobiDerivative(j, alpha, x, y, Jacobi_j_ref, Jacobi_j_dx, Jacobi_j_dt);
+                            
+                            
+                            std::vector<double> Int_Jacobi_l;
+                            std::vector<double> Jacobi_l;
+                            std::vector<double> R_l;
+                            x = Ld;
+                            y = La + Lb + Lc + Ld;
+                            alpha = 2*(i + j + 1);
+                            poly1d.CalcIntJacobi(l, x, y, alpha, Int_Jacobi_l);
+                            poly1d.CalcJacobi(l, x, y, alpha, Jacobi_l);
+                            poly1d.CalcRJacobi(l, x, y, alpha, R_l);
+                            
+
+                            
+                            // Scaled Skew-sym outer product
+                            DenseMatrix skw_sym_outerprod_1 = skw_sym_outerprod_fnc(grad_Lb, grad_Lc);
+
+                            DenseMatrix skw_sym_outerprod_2 = skw_sym_outerprod_fnc(grad_Lc, grad_La);
+
+                            DenseMatrix skw_sym_outerprod_3 = skw_sym_outerprod_fnc(grad_La, grad_Lb);
+                            
+                            
+                            
+                            // grad of Legendre and Jacobi Polynomials (scalar part)
+                            double dscalar_x = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[0] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[0] + grad_Lb[0])) * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[0] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[0] + grad_Lb[0] + grad_Lc[0]) ) * Int_Jacobi_l[Int_Jacobi_l.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2]*grad_Ld[0] + R_l[R_l.size()-2] * (grad_La[0] + grad_Lb[0] + grad_Lc[0] + grad_Ld[0]));
+                            
+                            
+                            double dscalar_y = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[1] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[1] + grad_Lb[1])) * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[1] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[1] + grad_Lb[1] + grad_Lc[1]) ) * Int_Jacobi_l[Int_Jacobi_l.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2]*grad_Ld[1] + R_l[R_l.size()-2] * (grad_La[1] + grad_Lb[1] + grad_Lc[1] + grad_Ld[1]));
+                            
+                            
+                            double dscalar_z = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[2] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[2] + grad_Lb[2])) * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[2] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[2] + grad_Lb[2] + grad_Lc[2]) ) * Int_Jacobi_l[Int_Jacobi_l.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2]*grad_Ld[2] + R_l[R_l.size()-2] * (grad_La[2] + grad_Lb[2] + grad_Lc[2] + grad_Ld[2]));
+                            
+                            
+                            double dscalar_t = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[3] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[3] + grad_Lb[3])) * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[3] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[3] + grad_Lb[3] + grad_Lc[3]) ) * Int_Jacobi_l[Int_Jacobi_l.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2]*grad_Ld[3] + R_l[R_l.size()-2] * (grad_La[3] + grad_Lb[3] + grad_Lc[3] + grad_Ld[3]));
+                            
+                            
+                            
+
+                            
+                            
+                            // curl of skw-sym part
+                            
+                            std::vector<double> F_vec(4);
+                            // x-component
+                            F_vec[0] = 2.0 * ( grad_La[1]*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + grad_Lb[1]*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + grad_Lc[1]*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * ( grad_La[2]*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + grad_Lb[2]*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + grad_Lc[2]*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * ( grad_La[3]*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + grad_Lb[3]*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + grad_Lc[3]*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) );
+                            
+                            
+                            // y-component
+                            F_vec[1] = -2.0 * ( grad_La[0]*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + grad_Lb[0]*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + grad_Lc[0]*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * ( grad_La[2]*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + grad_Lb[2]*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + grad_Lc[2]*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * ( grad_La[3]*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + grad_Lb[3]*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + grad_Lc[3]*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) );
+                            
+                            
+                            // z-component
+                            F_vec[2] = 2.0 * ( grad_La[0]*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + grad_Lb[0]*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + grad_Lc[0]*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * ( grad_La[1]*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + grad_Lb[1]*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + grad_Lc[1]*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * ( grad_La[3]*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + grad_Lb[3]*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + grad_Lc[3]*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
+                            
+                            
+                            // t-component
+                            F_vec[3] = -2.0 * ( grad_La[0]*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + grad_Lb[0]*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + grad_Lc[0]*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) )
+                             
+                            
+                            + 2.0 * ( grad_La[1]*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + grad_Lb[1]*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + grad_Lc[1]*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) )
+                            
+                            
+                            - 2.0 * ( grad_La[2]*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + grad_Lb[2]*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + grad_Lc[2]*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
+                            
+                            
+
+                            // grad(scalar-part) X skw-sym_mat
+                            
+                            std::vector<double> McrossN(4);
+                            // x-component
+                            McrossN[0] = 2.0 * dscalar_y * ( La*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + Lb*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + Lc*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * dscalar_z * ( La*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + Lb*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + Lc*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * dscalar_t * ( La*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + Lb*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + Lc*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) );
+                            
+                            
+                            // y-component
+                            McrossN[1] = -2.0 * dscalar_x * ( La*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + Lb*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + Lc*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * dscalar_z * ( La*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + Lb*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + Lc*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * dscalar_t * ( La*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + Lb*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + Lc*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) );
+                            
+                            
+                            // z-component
+                            McrossN[2] = 2.0 * dscalar_x * ( La*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + Lb*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + Lc*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * dscalar_y * ( La*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + Lb*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + Lc*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * dscalar_t * ( La*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + Lb*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + Lc*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
+                            
+                            
+                            // t-component
+                            McrossN[3] = -2.0 * dscalar_x * ( La*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + Lb*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + Lc*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) )
+                             
+                            
+                            + 2.0 * dscalar_y * ( La*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + Lb*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + Lc*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) )
+                            
+                            
+                            - 2.0 * dscalar_z * ( La*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + Lb*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + Lc*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
+                            
+                            
+                            // Add Basis Funcitons
+                            double s_factor = 0.5;
+                            
+                            Curlu(o, 0) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * F_vec[0]) + McrossN[0] );
+                            
+                            Curlu(o, 1) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * F_vec[1]) + McrossN[1] );
+
+                            Curlu(o, 2) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * F_vec[2]) + McrossN[2] );
+
+                            Curlu(o, 3) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * F_vec[3]) + McrossN[3] );
+                            
+
+
+
+                            o++;
+                        }
+                        
+                        Family++;
+                        
+                        
+                        if (Family == 2)
+                        {
+                            
+                            // Family II:
+
+                            
+                            // Define Barycentric Coordinates
+                            La = bary_vector[b];
+                            Lb = bary_vector[c];
+                            Lc = bary_vector[d];
+                            Ld = bary_vector[a];
+                            
+                            grad_La = gradbary_vector[b];
+                            grad_Lb = gradbary_vector[c];
+                            grad_Lc = gradbary_vector[d];
+                            grad_Ld = gradbary_vector[a];
+                            
+
+                            // compute polynomials
+                            std::vector<double> Legendre_i;
+                            std::vector<double> Legendre_i_dx;
+                            std::vector<double> Legendre_i_dt;
+                            double x = Lb;
+                            double y = La + Lb;
+                            //poly1d.CalcLegendreShifted(i, x, y, Legendre_i);
+                            poly1d.CalcScaledLegendreDerivative(i, x, y, Legendre_i, Legendre_i_dx, Legendre_i_dt);
+
+                            
+
+                            
+                            std::vector<double> Jacobi_j;
+                            std::vector<double> Jacobi_j_ref;
+                            x = Lc;
+                            y = La + Lb + Lc;
+                            double alpha = 2*i + 1;
+                            poly1d.CalcJacobi(j, x, y, alpha, Jacobi_j);
+                            // Derivative Jacobi Poly
+                            std::vector<double> Jacobi_j_dx;
+                            std::vector<double> Jacobi_j_dt;
+                            poly1d.CalcScaledJacobiDerivative(j, alpha, x, y, Jacobi_j_ref, Jacobi_j_dx, Jacobi_j_dt);
+                            
+                            
+                            std::vector<double> Int_Jacobi_l;
+                            std::vector<double> Jacobi_l;
+                            std::vector<double> R_l;
+                            x = Ld;
+                            y = La + Lb + Lc + Ld;
+                            alpha = 2*(i + j + 1);
+                            poly1d.CalcIntJacobi(l, x, y, alpha, Int_Jacobi_l);
+                            poly1d.CalcJacobi(l, x, y, alpha, Jacobi_l);
+                            poly1d.CalcRJacobi(l, x, y, alpha, R_l);
+                            
+
+                            
+                            // Scaled Skew-sym outer product
+                            DenseMatrix skw_sym_outerprod_1 = skw_sym_outerprod_fnc(grad_Lb, grad_Lc);
+
+                            DenseMatrix skw_sym_outerprod_2 = skw_sym_outerprod_fnc(grad_Lc, grad_La);
+
+                            DenseMatrix skw_sym_outerprod_3 = skw_sym_outerprod_fnc(grad_La, grad_Lb);
+                            
+                            
+                            
+                            // grad of Legendre and Jacobi Polynomials (scalar part)
+                            double dscalar_x = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[0] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[0] + grad_Lb[0])) * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[0] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[0] + grad_Lb[0] + grad_Lc[0]) ) * Int_Jacobi_l[Int_Jacobi_l.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2]*grad_Ld[0] + R_l[R_l.size()-2] * (grad_La[0] + grad_Lb[0] + grad_Lc[0] + grad_Ld[0]));
+                            
+                            
+                            double dscalar_y = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[1] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[1] + grad_Lb[1])) * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[1] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[1] + grad_Lb[1] + grad_Lc[1]) ) * Int_Jacobi_l[Int_Jacobi_l.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2]*grad_Ld[1] + R_l[R_l.size()-2] * (grad_La[1] + grad_Lb[1] + grad_Lc[1] + grad_Ld[1]));
+                            
+                            
+                            double dscalar_z = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[2] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[2] + grad_Lb[2])) * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[2] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[2] + grad_Lb[2] + grad_Lc[2]) ) * Int_Jacobi_l[Int_Jacobi_l.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2]*grad_Ld[2] + R_l[R_l.size()-2] * (grad_La[2] + grad_Lb[2] + grad_Lc[2] + grad_Ld[2]));
+                            
+                            
+                            double dscalar_t = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[3] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[3] + grad_Lb[3])) * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[3] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[3] + grad_Lb[3] + grad_Lc[3]) ) * Int_Jacobi_l[Int_Jacobi_l.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2]*grad_Ld[3] + R_l[R_l.size()-2] * (grad_La[3] + grad_Lb[3] + grad_Lc[3] + grad_Ld[3]));
+                            
+                            
+                            
+
+                            
+                            
+                            // curl of skw-sym part
+                            
+                            std::vector<double> F_vec(4);
+                            // x-component
+                            F_vec[0] = 2.0 * ( grad_La[1]*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + grad_Lb[1]*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + grad_Lc[1]*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * ( grad_La[2]*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + grad_Lb[2]*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + grad_Lc[2]*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * ( grad_La[3]*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + grad_Lb[3]*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + grad_Lc[3]*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) );
+                            
+                            
+                            // y-component
+                            F_vec[1] = -2.0 * ( grad_La[0]*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + grad_Lb[0]*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + grad_Lc[0]*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * ( grad_La[2]*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + grad_Lb[2]*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + grad_Lc[2]*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * ( grad_La[3]*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + grad_Lb[3]*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + grad_Lc[3]*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) );
+                            
+                            
+                            // z-component
+                            F_vec[2] = 2.0 * ( grad_La[0]*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + grad_Lb[0]*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + grad_Lc[0]*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * ( grad_La[1]*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + grad_Lb[1]*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + grad_Lc[1]*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * ( grad_La[3]*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + grad_Lb[3]*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + grad_Lc[3]*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
+                            
+                            
+                            // t-component
+                            F_vec[3] = -2.0 * ( grad_La[0]*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + grad_Lb[0]*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + grad_Lc[0]*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) )
+                             
+                            
+                            + 2.0 * ( grad_La[1]*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + grad_Lb[1]*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + grad_Lc[1]*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) )
+                            
+                            
+                            - 2.0 * ( grad_La[2]*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + grad_Lb[2]*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + grad_Lc[2]*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
+                            
+                            
+                            // grad(scalar-part) X skw-sym_mat
+                            
+                            std::vector<double> McrossN(4);
+                            // x-component
+                            McrossN[0] = 2.0 * dscalar_y * ( La*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + Lb*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + Lc*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * dscalar_z * ( La*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + Lb*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + Lc*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * dscalar_t * ( La*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + Lb*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + Lc*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) );
+                            
+                            
+                            // y-component
+                            McrossN[1] = -2.0 * dscalar_x * ( La*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + Lb*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + Lc*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * dscalar_z * ( La*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + Lb*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + Lc*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * dscalar_t * ( La*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + Lb*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + Lc*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) );
+                            
+                            
+                            // z-component
+                            McrossN[2] = 2.0 * dscalar_x * ( La*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + Lb*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + Lc*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * dscalar_y * ( La*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + Lb*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + Lc*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * dscalar_t * ( La*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + Lb*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + Lc*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
+                            
+                            
+                            // t-component
+                            McrossN[3] = -2.0 * dscalar_x * ( La*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + Lb*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + Lc*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) )
+                             
+                            
+                            + 2.0 * dscalar_y * ( La*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + Lb*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + Lc*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) )
+                            
+                            
+                            - 2.0 * dscalar_z * ( La*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + Lb*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + Lc*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
+                            
+                            
+                            
+                            // Add Basis Funcitons
+                            double s_factor = 0.5;
+                            
+                            Curlu(o, 0) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * F_vec[0]) + McrossN[0] );
+                            
+                            Curlu(o, 1) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * F_vec[1]) + McrossN[1] );
+
+                            Curlu(o, 2) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * F_vec[2]) + McrossN[2] );
+
+                            Curlu(o, 3) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * F_vec[3]) + McrossN[3] );
+                            
+
+
+
+                            o++;
+                        }
+                        
+                        Family++;
+                        
+                        if (Family == 3)
+                        {
+                            // Family III:
+
+                            
+                            // Define Barycentric Coordinates
+                            La = bary_vector[c];
+                            Lb = bary_vector[d];
+                            Lc = bary_vector[a];
+                            Ld = bary_vector[b];
+                            
+                            grad_La = gradbary_vector[c];
+                            grad_Lb = gradbary_vector[d];
+                            grad_Lc = gradbary_vector[a];
+                            grad_Ld = gradbary_vector[b];
+                            
+                            
+                            // compute polynomials
+                            std::vector<double> Legendre_i;
+                            std::vector<double> Legendre_i_dx;
+                            std::vector<double> Legendre_i_dt;
+                            double x = Lb;
+                            double y = La + Lb;
+                            //poly1d.CalcLegendreShifted(i, x, y, Legendre_i);
+                            poly1d.CalcScaledLegendreDerivative(i, x, y, Legendre_i, Legendre_i_dx, Legendre_i_dt);
+
+                            
+
+                            
+                            std::vector<double> Jacobi_j;
+                            std::vector<double> Jacobi_j_ref;
+                            x = Lc;
+                            y = La + Lb + Lc;
+                            double alpha = 2*i + 1;
+                            poly1d.CalcJacobi(j, x, y, alpha, Jacobi_j);
+                            // Derivative Jacobi Poly
+                            std::vector<double> Jacobi_j_dx;
+                            std::vector<double> Jacobi_j_dt;
+                            poly1d.CalcScaledJacobiDerivative(j, alpha, x, y, Jacobi_j_ref, Jacobi_j_dx, Jacobi_j_dt);
+                            
+                            
+                            std::vector<double> Int_Jacobi_l;
+                            std::vector<double> Jacobi_l;
+                            std::vector<double> R_l;
+                            x = Ld;
+                            y = La + Lb + Lc + Ld;
+                            alpha = 2*(i + j + 1);
+                            poly1d.CalcIntJacobi(l, x, y, alpha, Int_Jacobi_l);
+                            poly1d.CalcJacobi(l, x, y, alpha, Jacobi_l);
+                            poly1d.CalcRJacobi(l, x, y, alpha, R_l);
+                            
+
+                            
+                            // Scaled Skew-sym outer product
+                            DenseMatrix skw_sym_outerprod_1 = skw_sym_outerprod_fnc(grad_Lb, grad_Lc);
+
+                            DenseMatrix skw_sym_outerprod_2 = skw_sym_outerprod_fnc(grad_Lc, grad_La);
+
+                            DenseMatrix skw_sym_outerprod_3 = skw_sym_outerprod_fnc(grad_La, grad_Lb);
+                            
+                            
+                            
+                            // grad of Legendre and Jacobi Polynomials (scalar part)
+                            double dscalar_x = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[0] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[0] + grad_Lb[0])) * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[0] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[0] + grad_Lb[0] + grad_Lc[0]) ) * Int_Jacobi_l[Int_Jacobi_l.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2]*grad_Ld[0] + R_l[R_l.size()-2] * (grad_La[0] + grad_Lb[0] + grad_Lc[0] + grad_Ld[0]));
+                            
+                            
+                            double dscalar_y = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[1] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[1] + grad_Lb[1])) * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[1] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[1] + grad_Lb[1] + grad_Lc[1]) ) * Int_Jacobi_l[Int_Jacobi_l.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2]*grad_Ld[1] + R_l[R_l.size()-2] * (grad_La[1] + grad_Lb[1] + grad_Lc[1] + grad_Ld[1]));
+                            
+                            
+                            double dscalar_z = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[2] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[2] + grad_Lb[2])) * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[2] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[2] + grad_Lb[2] + grad_Lc[2]) ) * Int_Jacobi_l[Int_Jacobi_l.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2]*grad_Ld[2] + R_l[R_l.size()-2] * (grad_La[2] + grad_Lb[2] + grad_Lc[2] + grad_Ld[2]));
+                            
+                            
+                            double dscalar_t = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[3] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[3] + grad_Lb[3])) * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[3] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[3] + grad_Lb[3] + grad_Lc[3]) ) * Int_Jacobi_l[Int_Jacobi_l.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2]*grad_Ld[3] + R_l[R_l.size()-2] * (grad_La[3] + grad_Lb[3] + grad_Lc[3] + grad_Ld[3]));
+                            
+                            
+                            
+
+                            
+                            
+                            // curl of skw-sym part
+                            
+                            std::vector<double> F_vec(4);
+                            // x-component
+                            F_vec[0] = 2.0 * ( grad_La[1]*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + grad_Lb[1]*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + grad_Lc[1]*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * ( grad_La[2]*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + grad_Lb[2]*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + grad_Lc[2]*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * ( grad_La[3]*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + grad_Lb[3]*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + grad_Lc[3]*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) );
+                            
+                            
+                            // y-component
+                            F_vec[1] = -2.0 * ( grad_La[0]*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + grad_Lb[0]*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + grad_Lc[0]*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * ( grad_La[2]*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + grad_Lb[2]*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + grad_Lc[2]*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * ( grad_La[3]*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + grad_Lb[3]*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + grad_Lc[3]*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) );
+                            
+                            
+                            // z-component
+                            F_vec[2] = 2.0 * ( grad_La[0]*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + grad_Lb[0]*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + grad_Lc[0]*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * ( grad_La[1]*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + grad_Lb[1]*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + grad_Lc[1]*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * ( grad_La[3]*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + grad_Lb[3]*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + grad_Lc[3]*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
+                            
+                            
+                            // t-component
+                            F_vec[3] = -2.0 * ( grad_La[0]*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + grad_Lb[0]*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + grad_Lc[0]*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) )
+                             
+                            
+                            + 2.0 * ( grad_La[1]*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + grad_Lb[1]*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + grad_Lc[1]*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) )
+                            
+                            
+                            - 2.0 * ( grad_La[2]*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + grad_Lb[2]*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + grad_Lc[2]*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
+                            
+                            
+                            // grad(scalar-part) X skw-sym_mat
+                            
+                            std::vector<double> McrossN(4);
+                            // x-component
+                            McrossN[0] = 2.0 * dscalar_y * ( La*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + Lb*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + Lc*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * dscalar_z * ( La*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + Lb*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + Lc*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * dscalar_t * ( La*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + Lb*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + Lc*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) );
+                            
+                            
+                            // y-component
+                            McrossN[1] = -2.0 * dscalar_x * ( La*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + Lb*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + Lc*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * dscalar_z * ( La*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + Lb*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + Lc*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * dscalar_t * ( La*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + Lb*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + Lc*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) );
+                            
+                            
+                            // z-component
+                            McrossN[2] = 2.0 * dscalar_x * ( La*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + Lb*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + Lc*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * dscalar_y * ( La*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + Lb*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + Lc*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * dscalar_t * ( La*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + Lb*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + Lc*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
+                            
+                            
+                            // t-component
+                            McrossN[3] = -2.0 * dscalar_x * ( La*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + Lb*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + Lc*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) )
+                             
+                            
+                            + 2.0 * dscalar_y * ( La*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + Lb*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + Lc*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) )
+                            
+                            
+                            - 2.0 * dscalar_z * ( La*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + Lb*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + Lc*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
+                            
+                            
+                            
+                            // Add Basis Funcitons
+                            double s_factor = 0.5;
+                            
+                            Curlu(o, 0) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * F_vec[0]) + McrossN[0] );
+                            
+                            Curlu(o, 1) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * F_vec[1]) + McrossN[1] );
+
+                            Curlu(o, 2) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * F_vec[2]) + McrossN[2] );
+
+                            Curlu(o, 3) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * F_vec[3]) + McrossN[3] );
+                            
+
+
+
+                            o++;
+                            
+                        }
+                        
+                    }
+                }
+            }
+        }
+    }// end of Facets
+    
+    //Interiors
+//    for (int r = 0; r<6; r++)
+//    {
+//        if (r ==0)
+//        {
+//            //case where (a,b,c,d,e) = (0,1,2,3,4)
+//            // define lamda
+//            La = bary_vector[0];
+//            Lb = bary_vector[1];
+//            Lc = bary_vector[2];
+//            Ld = bary_vector[3];
+//            Le = bary_vector[4];
+//            
+//            // define grad(lamda)
+//            grad_La = gradbary_vector[0];
+//            grad_Lb = gradbary_vector[1];
+//            grad_Lc = gradbary_vector[2];
+//            grad_Ld = gradbary_vector[3];
+//            grad_Le = gradbary_vector[4];
+//            
+//            // define a,b,c,d
+//            a = 0;
+//            b = 1;
+//            c = 2;
+//            d = 3;
+//            
+//        }
+//        else if (r==1)
+//        {
+//            //case where (a,b,c,d,e) = (1,2,3,4,0)
+//            // define lamda
+//            La = bary_vector[1];
+//            Lb = bary_vector[2];
+//            Lc = bary_vector[3];
+//            Ld = bary_vector[4];
+//            Le = bary_vector[0];
+//            
+//            // define grad(lamda)
+//            grad_La = gradbary_vector[1];
+//            grad_Lb = gradbary_vector[2];
+//            grad_Lc = gradbary_vector[3];
+//            grad_Ld = gradbary_vector[4];
+//            grad_Le = gradbary_vector[0];
+//            
+//            // define a,b,c,d
+//            a = 1;
+//            b = 2;
+//            c = 3;
+//            d = 4;
+//            
+//            
+//        }
+//        else if (r==2)
+//        {
+//            //case where (a,b,c,d,e) = (2,3,4,0,1)
+//            // define lamda
+//            La = bary_vector[2];
+//            Lb = bary_vector[3];
+//            Lc = bary_vector[4];
+//            Ld = bary_vector[0];
+//            Le = bary_vector[1];
+//            
+//            // define grad(lamda)
+//            grad_La = gradbary_vector[2];
+//            grad_Lb = gradbary_vector[3];
+//            grad_Lc = gradbary_vector[4];
+//            grad_Ld = gradbary_vector[0];
+//            grad_Le = gradbary_vector[1];
+//            
+//            // define a,b,c,d
+//            a = 2;
+//            b = 3;
+//            c = 4;
+//            d = 0;
+//            
+//        }
+//        else if (r==3)
+//        {
+//            //case where (a,b,c,d,e) = (3,4,0,1,2)
+//            // define lamda
+//            La = bary_vector[3];
+//            Lb = bary_vector[4];
+//            Lc = bary_vector[0];
+//            Ld = bary_vector[1];
+//            Le = bary_vector[2];
+//            
+//            // define grad(lamda)
+//            grad_La = gradbary_vector[3];
+//            grad_Lb = gradbary_vector[4];
+//            grad_Lc = gradbary_vector[0];
+//            grad_Ld = gradbary_vector[1];
+//            grad_Le = gradbary_vector[2];
+//            
+//            // define a,b,c,d
+//            a = 3;
+//            b = 4;
+//            c = 0;
+//            d = 1;
+//            
+//        }
+//        else if (r==4)
+//        {
+//            //case where (a,b,c,d,e) = (4,0,1,2,3)
+//            // define lamda
+//            La = bary_vector[4];
+//            Lb = bary_vector[0];
+//            Lc = bary_vector[1];
+//            Ld = bary_vector[2];
+//            Le = bary_vector[3];
+//            
+//            // define grad(lamda)
+//            grad_La = gradbary_vector[4];
+//            grad_Lb = gradbary_vector[0];
+//            grad_Lc = gradbary_vector[1];
+//            grad_Ld = gradbary_vector[2];
+//            grad_Le = gradbary_vector[3];
+//            
+//            // define a,b,c,d
+//            a = 4;
+//            b = 0;
+//            c = 1;
+//            d = 2;
+//            
+//            
+//        }
+//        else if (r==5)
+//        {
+//            //case where (a,b,c,d,e) = (0,1,3,2,4)
+//            // define lamda
+//            La = bary_vector[0];
+//            Lb = bary_vector[1];
+//            Lc = bary_vector[3];
+//            Ld = bary_vector[2];
+//            Le = bary_vector[4];
+//            
+//            // define grad(lamda)
+//            grad_La = gradbary_vector[0];
+//            grad_Lb = gradbary_vector[1];
+//            grad_Lc = gradbary_vector[3];
+//            grad_Ld = gradbary_vector[2];
+//            grad_Le = gradbary_vector[4];
+//            
+//            // define a,b,c,d
+//            a = 0;
+//            b = 1;
+//            c = 3;
+//            d = 2;
+//            
+//        }
+//        else
+//        {
+//            mfem_error("Invaild Bubble");
+//        }
+//        
+//        for(int i=0; i<p;i++)
+//        {
+//            for(int j=0; j<p;j++)
+//            {
+//                for(int l=1; l<p;l++)
+//                {
+//                    for (int m=1; m<p; m++)
+//                    {
+//                        if((i+j+l+m)<p)
+//                        {
+//                            
+//                            
+//                            // compute polynomials
+//                            std::vector<double> Legendre_i;
+//                            std::vector<double> Legendre_i_dx;
+//                            std::vector<double> Legendre_i_dt;
+//                            double x = Lb;
+//                            double y = La + Lb;
+//                            //poly1d.CalcLegendreShifted(i, x, y, Legendre_i);
+//                            poly1d.CalcScaledLegendreDerivative(i, x, y, Legendre_i, Legendre_i_dx, Legendre_i_dt);
+//
+//                        
+//                            std::vector<double> Jacobi_j;
+//                            std::vector<double> Jacobi_j_ref;
+//                            x = Lc;
+//                            y = La + Lb + Lc;
+//                            double alpha = 2*i + 1;
+//                            poly1d.CalcJacobi(j, x, y, alpha, Jacobi_j);
+//                            // Derivative Jacobi Poly
+//                            std::vector<double> Jacobi_j_dx;
+//                            std::vector<double> Jacobi_j_dt;
+//                            poly1d.CalcScaledJacobiDerivative(j, alpha, x, y, Jacobi_j_ref, Jacobi_j_dx, Jacobi_j_dt);
+//                            
+//                            
+//                            std::vector<double> Int_Jacobi_l;
+//                            std::vector<double> Jacobi_l;
+//                            std::vector<double> R_l;
+//                            x = Ld;
+//                            y = La + Lb + Lc + Ld;
+//                            alpha = 2*(i + j + 1);
+//                            poly1d.CalcIntJacobi(l, x, y, alpha, Int_Jacobi_l);
+//                            poly1d.CalcJacobi(l, x, y, alpha, Jacobi_l);
+//                            poly1d.CalcRJacobi(l, x, y, alpha, R_l);
+//                            
+//                            std::vector<double> Int_Jacobi_m;
+//                            std::vector<double> Jacobi_m;
+//                            //std::vector<double> R_m;
+//                            x = Le;
+//                            y = 1.0;
+//                            alpha = 2*(i + j + l);
+//                            poly1d.CalcIntJacobi(m, x, y, alpha, Int_Jacobi_m);
+//                            poly1d.CalcJacobi(m, x, y, alpha, Jacobi_m);
+//                            //poly1d.CalcRJacobi(m, x, y, alpha, R_m);
+//                            
+//
+//                            
+//                            // Scaled Skew-sym outer product
+//                            DenseMatrix skw_sym_outerprod_1 = skw_sym_outerprod_fnc(grad_Lb, grad_Lc);
+//
+//                            DenseMatrix skw_sym_outerprod_2 = skw_sym_outerprod_fnc(grad_Lc, grad_La);
+//
+//                            DenseMatrix skw_sym_outerprod_3 = skw_sym_outerprod_fnc(grad_La, grad_Lb);
+//                            
+//                            
+//                            
+//                            // grad of Legendre and Jacobi Polynomials (scalar part)
+//                            double dscalar_x = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[0] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[0] + grad_Lb[0])) * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1]
+//                            
+//                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[0] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[0] + grad_Lb[0] + grad_Lc[0]) ) * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1]
+//                            
+//                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2]*grad_Ld[0] + R_l[R_l.size()-2] * (grad_La[0] + grad_Lb[0] + grad_Lc[0] + grad_Ld[0])) * Int_Jacobi_m[Int_Jacobi_m.size()-1]
+//                            
+//                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (Jacobi_m[Jacobi_m.size()-2]*grad_Le[0]);
+//                            
+//                            
+//                            double dscalar_y = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[1] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[1] + grad_Lb[1])) * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] *Int_Jacobi_m[Int_Jacobi_m.size()-1]
+//                            
+//                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[1] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[1] + grad_Lb[1] + grad_Lc[1]) ) * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1]
+//                            
+//                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2]*grad_Ld[1] + R_l[R_l.size()-2] * (grad_La[1] + grad_Lb[1] + grad_Lc[1] + grad_Ld[1])) * Int_Jacobi_m[Int_Jacobi_m.size()-1]
+//                            
+//                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (Jacobi_m[Jacobi_m.size()-2]*grad_Le[1]);
+//                            
+//                            
+//                            double dscalar_z = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[2] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[2] + grad_Lb[2])) * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] *Int_Jacobi_m[Int_Jacobi_m.size()-1]
+//                            
+//                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[2] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[2] + grad_Lb[2] + grad_Lc[2]) ) * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1]
+//                            
+//                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2]*grad_Ld[2] + R_l[R_l.size()-2] * (grad_La[2] + grad_Lb[2] + grad_Lc[2] + grad_Ld[2])) * Int_Jacobi_m[Int_Jacobi_m.size()-1]
+//                            
+//                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (Jacobi_m[Jacobi_m.size()-2]*grad_Le[2]);
+//                            
+//                            
+//                            double dscalar_t = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[3] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[3] + grad_Lb[3])) * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] *Int_Jacobi_m[Int_Jacobi_m.size()-1]
+//                            
+//                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[3] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[3] + grad_Lb[3] + grad_Lc[3]) ) * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1]
+//                            
+//                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2]*grad_Ld[3] + R_l[R_l.size()-2] * (grad_La[3] + grad_Lb[3] + grad_Lc[3] + grad_Ld[3])) * Int_Jacobi_m[Int_Jacobi_m.size()-1]
+//                            
+//                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (Jacobi_m[Jacobi_m.size()-2]*grad_Le[3]);
+//                            
+//                            
+//
+//                            
+//                            // curl of skw-sym part
+//                            
+//                            std::vector<double> F_vec(4);
+//                            // x-component
+//                            F_vec[0] = 2.0 * ( grad_La[1]*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + grad_Lb[1]*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + grad_Lc[1]*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
+//                            
+//                            
+//                            - 2.0 * ( grad_La[2]*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + grad_Lb[2]*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + grad_Lc[2]*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
+//                            
+//                            
+//                            + 2.0 * ( grad_La[3]*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + grad_Lb[3]*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + grad_Lc[3]*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) );
+//                            
+//                            
+//                            // y-component
+//                            F_vec[1] = -2.0 * ( grad_La[0]*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + grad_Lb[0]*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + grad_Lc[0]*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
+//                            
+//                            
+//                            + 2.0 * ( grad_La[2]*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + grad_Lb[2]*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + grad_Lc[2]*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
+//                            
+//                            
+//                            - 2.0 * ( grad_La[3]*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + grad_Lb[3]*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + grad_Lc[3]*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) );
+//                            
+//                            
+//                            // z-component
+//                            F_vec[2] = 2.0 * ( grad_La[0]*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + grad_Lb[0]*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + grad_Lc[0]*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
+//                            
+//                            
+//                            - 2.0 * ( grad_La[1]*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + grad_Lb[1]*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + grad_Lc[1]*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
+//                            
+//                            
+//                            + 2.0 * ( grad_La[3]*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + grad_Lb[3]*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + grad_Lc[3]*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
+//                            
+//                            
+//                            // t-component
+//                            F_vec[3] = -2.0 * ( grad_La[0]*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + grad_Lb[0]*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + grad_Lc[0]*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) )
+//                             
+//                            
+//                            + 2.0 * ( grad_La[1]*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + grad_Lb[1]*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + grad_Lc[1]*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) )
+//                            
+//                            
+//                            - 2.0 * ( grad_La[2]*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + grad_Lb[2]*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + grad_Lc[2]*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
+//                            
+//                            
+//
+//                            // grad(scalar-part) X skw-sym_mat
+//                            
+//                            std::vector<double> McrossN(4);
+//                            // x-component
+//                            McrossN[0] = 2.0 * dscalar_y * ( La*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + Lb*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + Lc*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
+//                            
+//                            
+//                            - 2.0 * dscalar_z * ( La*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + Lb*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + Lc*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
+//                            
+//                            
+//                            + 2.0 * dscalar_t * ( La*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + Lb*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + Lc*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) );
+//                            
+//                            
+//                            // y-component
+//                            McrossN[1] = -2.0 * dscalar_x * ( La*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + Lb*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + Lc*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
+//                            
+//                            
+//                            + 2.0 * dscalar_z * ( La*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + Lb*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + Lc*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
+//                            
+//                            
+//                            - 2.0 * dscalar_t * ( La*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + Lb*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + Lc*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) );
+//                            
+//                            
+//                            // z-component
+//                            McrossN[2] = 2.0 * dscalar_x * ( La*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + Lb*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + Lc*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
+//                            
+//                            
+//                            - 2.0 * dscalar_y * ( La*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + Lb*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + Lc*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
+//                            
+//                            
+//                            + 2.0 * dscalar_t * ( La*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + Lb*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + Lc*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
+//                            
+//                            
+//                            // t-component
+//                            McrossN[3] = -2.0 * dscalar_x * ( La*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + Lb*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + Lc*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) )
+//                             
+//                            
+//                            + 2.0 * dscalar_y * ( La*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + Lb*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + Lc*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) )
+//                            
+//                            
+//                            - 2.0 * dscalar_z * ( La*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + Lb*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + Lc*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
+//                            
+//                            
+//                            // Add Basis Funcitons
+//                            double s_factor = 0.5;
+//                            
+//                            Curlu(o, 0) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * F_vec[0]) + McrossN[0] );
+//                            
+//                            Curlu(o, 1) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * F_vec[1]) + McrossN[1] );
+//
+//                            Curlu(o, 2) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * F_vec[2]) + McrossN[2] );
+//
+//                            Curlu(o, 3) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * F_vec[3]) + McrossN[3] );
+//                            
+//
+//
+//
+//                            o++;
+//                            
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//        
+//    }// End of Interiors
+
+    
+    
+    Curlshape = 0.0;
+    for (int i=0; i < num_dof; i++)
+    {
+        for (int j=0; j<dim; j++)
+        {
+            for (int k=0; k<num_dof; k++)
+            {
+                Curlshape(i,j) +=  T_inv(i,k) * Curlu(k,j);
+            }
+        }
+    }
                     
    
-    
-    //Ti.Mult(SkwGradu, SkwGradshape);
+    // Real Code
+    //Ti.Mult(Curlu, Curlshape);
+
+
+//    std::cout << "Curl Shape ------" << std::endl;
+//    for (int nfnc=0; nfnc<10; nfnc++)
+//    {
+//        std::cout << Curlshape(nfnc,0) << ", " << Curlshape(nfnc,1) << ", " << Curlshape(nfnc,2) << ", " <<  Curlshape(nfnc,3) << std::endl;
+//    }
 
 
 }
@@ -858,32 +3206,56 @@ void HCurl_PentatopeElement::Project (
    VectorCoefficient &vc, ElementTransformation &Trans,
    Vector &dofs) const
 {
-   Vector v(6);
-   double t1[4]; Vector t1i(t1, 4);
-   double t2[4]; Vector t2i(t2, 4);
-   Vector Mt(4);
-   DenseMatrix mat(4,4); mat = 0.0;
+    
+    Vector v(6);
+    double t1[4]; Vector t1i(t1, 4);
+    double t2[4]; Vector t2i(t2, 4);
+    Vector Mt(4);
+    DenseMatrix mat(4,4); mat = 0.0;
 
-   dofs.SetSize(10); dofs = 0.0;
-   for (int k = 0; k < 10; k++)
-   {
-      Trans.SetIntPoint (&Nodes.IntPoint (k));
-      const DenseMatrix &J = Trans.Jacobian();
+    int dof_num = FiniteElement::dof;
+    
+    dofs.SetSize(dof_num); dofs = 0.0;
+    for (int k = 0; k < dof_num; k++)
+    {
 
-      vc.Eval(v, Trans, Nodes.IntPoint (k));
+       Trans.SetIntPoint (&Nodes.IntPoint (k));
+       const DenseMatrix &J = Trans.Jacobian();
 
-      mat(0,1) =  v(5); mat(0,2) = -v(4); mat(0,3) =  v(3);
-      mat(1,0) = -v(5);                   mat(1,2) =  v(2); mat(1,3) = -v(1);
-      mat(2,0) =  v(4); mat(2,1) = -v(2);                   mat(2,3) =  v(0);
-      mat(3,0) = -v(3); mat(3,1) =  v(1); mat(3,2) = -v(0);
+       vc.Eval(v, Trans, Nodes.IntPoint (k));
+        
+//       std::cout << "Start of Project Evaulation (vector) Check" << std::endl;
+//       std::cout << v(0) << std::endl;
+//       std::cout << v(1) << std::endl;
+//       std::cout << v(2) << std::endl;
+//       std::cout << v(3) << std::endl;
+//       std::cout << v(4) <<  std::endl;
+//       std::cout << v(5) << std::endl;
 
-      J.Mult(tk1[k],t1);
-      J.Mult(tk2[k],t2);
 
-      mat.Mult(t2i, Mt);
 
-      dofs(k) = t1i * Mt;
-   }
+       // New Proxy
+//                            mat(0,1) =  v(0); mat(0,2) = v(1);  mat(0,3) =  v(2);
+//         mat(1,0) = -v(0);                    mat(1,2) =  v(3); mat(1,3) = v(4);
+//         mat(2,0) =  -v(1); mat(2,1) = -v(3);                   mat(2,3) =  v(5);
+//         mat(3,0) = -v(2);  mat(3,1) = -v(4); mat(3,2) = -v(5);
+        
+        // New Proxy
+                             mat(0,1) =  v(0); mat(0,2) =  v(1); mat(0,3) =  v(2);
+          mat(1,0) = v(6);                     mat(1,2) =  v(3); mat(1,3) =  v(4);
+          mat(2,0) = v(7);  mat(2,1) = v(8);                     mat(2,3) =  v(5);
+          mat(3,0) = v(9);  mat(3,1) = v(10); mat(3,2) = v(11);
+        
+        
+       J.Mult(tk1[dof2tk1[k]],t1);
+       J.Mult(tk2[dof2tk2[k]],t2);
+                
+       mat.Mult(t2i, Mt);
+        
+       dofs(k) = t1i * Mt;
+       //std::cout << "dof(" << k << ") = " << t1i * Mt << std::endl;
+    }
+
 }
 
 //void HCurl_PentatopeElement::Project(const FiniteElement &fe,

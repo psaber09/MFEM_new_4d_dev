@@ -846,6 +846,9 @@ protected:
     
    void CalcVShape_DivSkew(ElementTransformation &Trans,
                            DenseMatrix &shape) const;
+    
+   void CalcVShape_Hcurl(ElementTransformation &Trans,
+                           DenseMatrix &shape) const;
 
    void CalcVShape_ND(ElementTransformation &Trans,
                       DenseMatrix &shape) const;

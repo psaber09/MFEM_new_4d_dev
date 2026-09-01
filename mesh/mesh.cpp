@@ -9296,7 +9296,7 @@ void Mesh::GenerateFaces()
                         }
                         
                         const int *fv = pent_t::FaceVert[filter[j]];
-                        // printf("%d:: %d %d %d %d\n",ef[filter[j]],tempv[fv[0]], tempv[fv[1]], tempv[fv[2]], tempv[fv[3]]);
+                        //printf("%d:: %d %d %d %d\n",ef[filter[j]],tempv[fv[0]], tempv[fv[1]], tempv[fv[2]], tempv[fv[3]]);
                         //printf("%d:: %d %d %d %d\n",ef[filter[j]],v[fv[0]], v[fv[1]], v[fv[2]], v[fv[3]]);
                         AddTetrahedralFaceElement(j, ef[filter[j]], i,
                                                   v[fv[0]], v[fv[1]], v[fv[2]], v[fv[3]]);

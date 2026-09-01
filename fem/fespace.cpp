@@ -2845,6 +2845,33 @@ void FiniteElementSpace::ConstructDoFTransArray()
             new ND_PentDofTransformation(skwGrad_Pent->GetOrder());
         }
     }
+    
+    if (dynamic_cast<const HCurl_FECollection*>(fec))
+    {
+//        const FiniteElement *skwGrad_tri =
+//        fec->FiniteElementForGeometry(Geometry::TRIANGLE);
+//        if (skwGrad_tri)
+//        {
+//            DoFTransArray[Geometry::TRIANGLE] =
+//            new ND_TriDofTransformation(skwGrad_tri->GetOrder());
+//        }
+        
+//        const FiniteElement *Hcurl_tet =
+//        fec->FiniteElementForGeometry(Geometry::TETRAHEDRON);
+//        if (Hcurl_tet)
+//        {
+//            DoFTransArray[Geometry::TETRAHEDRON] =
+//            new ND_TetDofTransformation(Hcurl_tet->GetOrder());
+//        }
+        
+        const FiniteElement *Hcurl_Pent =
+        fec->FiniteElementForGeometry(Geometry::PENTATOPE);
+        if (Hcurl_Pent)
+        {
+            DoFTransArray[Geometry::PENTATOPE] =
+            new CURL_PentDofTransformation(Hcurl_Pent->GetOrder());
+        }
+    }
 }
 
 NURBSExtension *FiniteElementSpace::StealNURBSext()
@@ -3754,6 +3781,19 @@ void FiniteElementSpace::GetElementDofs(int elem, Array<int> &dofs,
     if (dim > 3 && fec->HasPlanarDofs(geom)>0) // was fec->HasPlanarDofs(geom)
     {
        mesh->GetElementPlanars(elem, P, Po);
+//        std::cout << "FESPACE Post ---------" << std::endl;
+//        std::cout << "Planar Oreint 1 " << Po[0] << std::endl;
+//        std::cout << "Planar Oreint 2 " << Po[1] << std::endl;
+//        std::cout << "Planar Oreint 3 " << Po[2] << std::endl;
+//        std::cout << "Planar Oreint 4 " << Po[3] << std::endl;
+//        std::cout << "Planar Oreint 5 " << Po[4] << std::endl;
+//        std::cout << "Planar Oreint 6 " << Po[5] << std::endl;
+//        std::cout << "Planar Oreint 7 " << Po[6] << std::endl;
+//        std::cout << "Planar Oreint 8 " << Po[7] << std::endl;
+//        std::cout << "Planar Oreint 9 " << Po[8] << std::endl;
+//        std::cout << "Planar Oreint 10 " << Po[9] << std::endl;
+
+
 //       for (int i = 0; i < P.Size(); i++)
 //       {
 //          //npd += fec->GetNumDof(mesh->GetFaceGeometry(F[i]), order);  ** We do not need already set

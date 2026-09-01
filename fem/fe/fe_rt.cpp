@@ -1007,8 +1007,8 @@ RT_TetrahedronElement::RT_TetrahedronElement(const int p)
          }
    }
 
-   std::ofstream Vander_file("T_3Dtet.txt");
-   T.PrintMatlab(Vander_file);
+//   std::ofstream Vander_file("T_3Dtet.txt");
+//   T.PrintMatlab(Vander_file);
     
    Ti.Factor(T);
    // mfem::out << "RT_TetrahedronElement(" << p << ") : "; Ti.TestInversion();
@@ -1440,6 +1440,8 @@ Hdiv_PentatopeElement::Hdiv_PentatopeElement(const int p)
          {
             double w = bop[i] + bop[j] + bop[k] + bop[p-i-j-k];
             Nodes.IntPoint(o).Set4(bop[p-i-j-k]/w, bop[i]/w, bop[j]/w, bop[k]/w);
+             const IntegrationPoint &ip = Nodes.IntPoint(o);
+             std::cout << "Tet Dof 1  = " << ip.x << ", " << ip.y << ", " << ip.z << ", " << ip.t << std::endl;
             dof2nk[o++] = 4;
          }
 
@@ -1451,6 +1453,8 @@ Hdiv_PentatopeElement::Hdiv_PentatopeElement(const int p)
             {
                 double w = iop[i] + iop[j] + iop[k] + iop[l] + iop[p-1-i-j-k-l];
                 Nodes.IntPoint(o).Set4(iop[i]/w, iop[j]/w, iop[k]/w, iop[l]/w);
+                const IntegrationPoint &ip = Nodes.IntPoint(o);
+                std::cout << "Bubble Dof  = " << ip.x << ", " << ip.y << ", " << ip.z << ", " << ip.t << std::endl;
                 // old def dof2nk[o++] = 1;
                 dof2nk[o++] = 3;
                 Nodes.IntPoint(o).Set4(iop[i]/w, iop[j]/w, iop[k]/w, iop[l]/w);
@@ -1472,7 +1476,7 @@ Hdiv_PentatopeElement::Hdiv_PentatopeElement(const int p)
    for (int q = 0; q < dof; q++)
    {
        const IntegrationPoint &ip = Nodes.IntPoint(q);
-       std::cout << "Dof" << q << " = " << ip.x << ", " << ip.y << ", " << ip.z << ", " << ip.t << std::endl;
+       //std::cout << "Dof" << q << " = " << ip.x << ", " << ip.y << ", " << ip.z << ", " << ip.t << std::endl;
 
        //const double *nm = nk + 4*dof2nk[m];
        
@@ -1870,6 +1874,7 @@ void Hdiv_PentatopeElement::CalcVShape(const IntegrationPoint &ip,
                                      DenseMatrix &shape) const
 {
    const int p = order - 1;
+    int num_dof = dof;
    //std::cout << "p_CalcShape = " << p << std::endl;
     int reset_o;
 
@@ -1882,7 +1887,15 @@ void Hdiv_PentatopeElement::CalcVShape(const IntegrationPoint &ip,
     //logfile.open ("logfile_shape.txt", "a");
     //ofstream logfile("logfile_shape.txt", std::ios_base::app);
     //compute barycentric coordinates as function of ip
-    std::vector<double> bary_vector{ip.x, ip.y, ip.z, ip.t, (1.0 - ip.x - ip.y - ip.z - ip.t)};
+    //std::vector<double> bary_vector{ip.x, ip.y, ip.z, ip.t, (1.0 - ip.x - ip.y - ip.z - ip.t)};
+    // Tet Dof 1
+    //std::vector<double> bary_vector{0.148543, 0.148543, 0.554371, 0.0, (1.0 - 0.148543 - 0.148543 - 0.554371 - 0.0)};
+    // Tet Dof diag
+    std::vector<double> bary_vector{0.554371, 0.148543, 0.148543, 0.148543, (1.0 - 0.554371 - 0.148543 - 0.148543 - 0.148543)};
+    // Bubble Dof
+    //std::vector<double> bary_vector{0.2, 0.2, 0.2, 0.2, (1.0 - 0.2 - 0.2 - 0.2 - 0.2)};
+
+
     //std::cout << "Dof = " << ip.x << ", " << ip.y << ", " << ip.z << ", " << ip.t << std::endl;
 
     // compute the gradient of the barycentric coords
@@ -2214,6 +2227,57 @@ void Hdiv_PentatopeElement::CalcVShape(const IntegrationPoint &ip,
 
 
    Ti.Mult(u, shape);
+    
+    DenseMatrix u_x(num_dof,1);
+    DenseMatrix u_y(num_dof,1);
+    DenseMatrix u_z(num_dof,1);
+    DenseMatrix u_t(num_dof,1);
+
+    DenseMatrix Test_outx(num_dof,1);
+    DenseMatrix Test_outy(num_dof,1);
+    DenseMatrix Test_outz(num_dof,1);
+    DenseMatrix Test_outt(num_dof,1);
+
+    for (int row=0; row<num_dof; row++) {
+        u_x(row,0) = u(row,0);
+        u_y(row,0) = u(row,1);
+        u_z(row,0) = u(row,2);
+        u_t(row,0) = u(row,3);
+
+    }
+    
+    
+    Ti.Mult(u_x, Test_outx);
+    Ti.Mult(u_y, Test_outy);
+    Ti.Mult(u_z, Test_outz);
+    Ti.Mult(u_t, Test_outt);
+    
+    double ux_sum = 0;
+    double uy_sum = 0;
+    double uz_sum = 0;
+    double ut_sum = 0;
+    std::vector<double> n1 = {1,1,1,1};
+    //double dot_u_n = 0;
+    
+    for (int dnum = 0; dnum<num_dof; dnum++)
+    {
+        ux_sum += Test_outx(dnum,0);
+        uy_sum += Test_outy(dnum,0);
+        uz_sum += Test_outz(dnum,0);
+        ut_sum += Test_outt(dnum,0);
+        //dot_u_n += Test_outx(dnum,0)*n1[0] + Test_outy(dnum,0)*n1[1] + Test_outz(dnum,0)*n1[2] + Test_outt(dnum,0)*n1[3];
+    }
+    
+    std::vector<double> u_sum = {ux_sum, uy_sum, uz_sum, ut_sum};
+    double dot_u_n = u_sum[0]*n1[0] + u_sum[1]*n1[1] + u_sum[2]*n1[2] + u_sum[3]*n1[3];
+    
+    std::cout << "dot_ux_n = " << dot_u_n << std::endl;
+
+
+    for (int row=0; row<num_dof; row++)
+    {
+        std::cout << "Test_out = " << Test_outx(row,0) << std::endl;
+    }
 //    std::cout << std::endl;
 //    for (int i =0; i<dof; i++) 
 //    {

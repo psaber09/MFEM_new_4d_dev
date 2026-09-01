@@ -2974,7 +2974,13 @@ public:
          }
 
          AddMult_a_AAt(w, DivSkew_dFt, elmat);
+
       }
+       //std::cout << "Start of New Elmat DivSkw Int ------" << std::endl;
+//       real_t thres = 1e-16;
+//       elmat.Threshold(thres);
+//       elmat.PrintMatlab(std::cout);
+//       std::cout << std::endl;
    }
 
 };
@@ -3032,6 +3038,75 @@ public:
 
          AddMult_a_AAt(w, shape, elmat);
       }
+       //std::cout << "Start of New Elmat Mass Int ------" << std::endl;
+//       real_t thres = 1e-16;
+//       elmat.Threshold(thres);
+//       elmat.PrintMatlab(std::cout);
+//       std::cout << std::endl;
+   }
+
+};
+
+class VectorFE_CurlMassIntegrator: public BilinearFormIntegrator
+{
+private:
+   DenseMatrix shape;
+
+   Coefficient *Q;
+
+public:
+   VectorFE_CurlMassIntegrator() { Q = NULL; }
+   /// Construct a bilinear form integrator for Nedelec elements
+   VectorFE_CurlMassIntegrator(Coefficient &q) : Q(&q) { }
+
+   /* Given a particular Finite Element, compute the
+      element curl-curl matrix elmat */
+   virtual void AssembleElementMatrix(const FiniteElement &el,
+                                      ElementTransformation &Trans,
+                                      DenseMatrix &elmat)
+   {
+      int nd = el.GetDof();
+      int dim = el.GetDim();
+      real_t w;
+
+      shape.SetSize(nd,dim*dim);
+
+      elmat.SetSize(nd);
+
+      const IntegrationRule *ir = IntRule;
+      if (ir == NULL)
+      {
+         int order = Trans.OrderW() + 2 * el.GetOrder();
+
+         ir = &IntRules.Get(el.GetGeomType(), order);
+      }
+
+      elmat = 0.0;
+      for (int i = 0; i < ir->GetNPoints(); i++)
+      {
+         const IntegrationPoint &ip = ir->IntPoint(i);
+         Trans.SetIntPoint (&ip);
+
+         w = ip.weight * fabs(Trans.Weight());
+
+
+         el.CalcVShape(Trans, shape);
+
+
+         if (Q)
+         {
+            w *= Q->Eval(Trans, ip);
+            w = (1./1.)*w; // 2.0 factor to account for skew-sym. that is not accounted for by computation using 6-independent components.
+
+         }
+
+         AddMult_a_AAt(w, shape, elmat);
+      }
+       //std::cout << "Start of New Elmat Mass Int ------" << std::endl;
+//       real_t thres = 1e-16;
+//       elmat.Threshold(thres);
+//       elmat.PrintMatlab(std::cout);
+//       std::cout << std::endl;
    }
 
 };

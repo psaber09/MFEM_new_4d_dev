@@ -455,6 +455,79 @@ public:
    {}
 };
 
+/** Abstract base class for high-order 4D H(CURL) spaces on elements with
+    tetrahedral facets.
+
+    The H-curl DoFs on the interior of tetrahedral facets come in triples which
+    share an interpolation point but have different bi-vector directions. These
+    directions depend on the orientation of the facet and can therefore differ in
+    neighboring elements. The mapping required to transform these DoFs can be
+    implemented as series of 3x3 linear transformations. The raw data for these
+    linear transformations is stored in the T_data and TInv_data arrays and can
+    be accessed as DenseMatrices using the GetFaceTransform() and
+    GetFaceInverseTransform() methods.
+*/
+class CURL_DofTransformation : public StatelessDofTransformation
+{
+private:
+   static const real_t T_data[24];
+   static const real_t TInv_data[24];
+   static const real_t T_data4D[216];
+   static const real_t TInv_data4D[216];
+   static const DenseTensor T, TInv;
+   static const DenseTensor T4D, TInv4D;
+
+
+protected:
+   const int  order;  // basis function order
+   const int  nedofs; // number of DoFs per edge
+   const int  ntdofs; // number of DoFs per triangular face
+   const int  ntetdofs; // number of DoFs per Tetrahedral facet
+   const int  nqdofs; // number of DoFs per quadrilateral face
+   const int  nedges; // number of edges per element
+   const int  nplanars; // number of planars per element
+   const int  nfaces; // number of faces per element
+   const int *ftypes; // Pointer to array of Geometry::Type for each face
+   const int *ptypes; // Pointer to array of Geometry::Type for each planar
+    
+   CURL_DofTransformation(int size, int ndim, int order, int num_edges, int num_planars, int num_faces,
+                         int *planar_types, int *face_types);
+
+public:
+    
+    // Return the 2x2 transformation operator for the given face orientation
+    static const DenseMatrix & GetFaceTransform(int ori) { return T(ori); }
+
+    // Return the 2x2 inverse transformation operator
+    static const DenseMatrix & GetFaceInverseTransform(int ori)
+    { return TInv(ori); }
+
+   bool IsIdentity() const override { return ntdofs < 2; }
+    // Transformations for 3D
+   void TransformPrimal(const Array<int> & Fo, real_t *v) const override;
+   void InvTransformPrimal(const Array<int> & Fo, real_t *v) const override;
+   void TransformDual(const Array<int> & Fo, real_t *v) const override;
+   void InvTransformDual(const Array<int> & Fo, real_t *v) const override;
+   // Transformations for 4D
+   void TransformPrimal(const Array<int> & Po, const Array<int> & Fo, real_t *v) const;
+   void InvTransformPrimal(const Array<int> & Po, const Array<int> & Fo, real_t *v) const;
+   void TransformDual(const Array<int> & Po, const Array<int> & Fo, real_t *v) const;
+   void InvTransformDual(const Array<int> & Po, const Array<int> & Fo, real_t *v) const;
+};
+
+
+// DoF transformation implementation for the Nedelec basis on Pentatope
+class CURL_PentDofTransformation : public CURL_DofTransformation
+{
+public:
+   CURL_PentDofTransformation(int order)
+      : CURL_DofTransformation(order*(order*order*order + 8*order*order + 19*order +12)/4, 4, order, 10, 10, 5,
+                             (int *)Geometry::Constants<Geometry::PENTATOPE>::
+                             PlanarTypes, (int *)Geometry::Constants<Geometry::PENTATOPE>::
+                             FaceTypes)
+   {}
+};
+
 } // namespace mfem
 
 #endif // MFEM_DOFTRANSFORM

@@ -1675,6 +1675,8 @@ void H1_PentatopeElement_Barycentric::CalcShape(const IntegrationPoint &ip,
                                                 Vector &shape) const
 {
    const int p = order;
+    
+   int num_dof = dof;
 
 #ifdef MFEM_THREAD_SAFE
    Vector shape_x(p + 1), shape_y(p + 1), shape_z(p + 1), shape_t(p+1),
@@ -1947,6 +1949,21 @@ void H1_PentatopeElement_Barycentric::CalcShape(const IntegrationPoint &ip,
     
 
    Ti.Mult(u, shape);
+    
+//    double sum[1];
+//    for (int sum_i = 0; sum_i<1; sum_i++) {
+//        sum[sum_i] = 0;
+//    }
+//    
+//
+//    for (int row =0; row<num_dof; row++)
+//    {
+//        sum[0] += shape(row);
+//    }
+//    
+//    for (int sum_i = 0; sum_i<1; sum_i++) {
+//        std::cout << "sum " << sum_i << " = " << sum[sum_i] << std::endl;
+//    }
     
 //    for (int i =0; i<dof; i++) {
 //        //for (int j = 0; j<dim; j++) {

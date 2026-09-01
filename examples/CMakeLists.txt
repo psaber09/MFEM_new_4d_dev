@@ -24,6 +24,7 @@ list(APPEND ALL_EXE_SRCS
   ex3_Hdiv.cpp
   ex3_SkwGrad.cpp
   ex3_Curl.cpp
+  ex3_DivSkw.cpp
   ex4.cpp
   ex5.cpp
   ex5_fixed.cpp

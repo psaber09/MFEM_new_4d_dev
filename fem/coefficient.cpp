@@ -368,12 +368,22 @@ void VectorFunctionCoefficient::Eval(Vector &V, ElementTransformation &T,
 {
    real_t x[Geometry::MaxDim];
    Vector transip(x, Geometry::MaxDim);
+    //std::cout << "Pre-transformation" << std::endl;
+    //std::cout << ip.x << ", " << ip.y << ", " << ip.z << ", " << ip.t <<std::endl;
+    //std::cout << x[0] << ", " << x[1] << ", " << x[2] << ", " << x[3] <<std::endl;
+    //std::cout << transip[0] << ", " << transip[1] << ", " << transip[2] << ", " << transip[3] <<std::endl;
 
    T.Transform(ip, transip);
+    //std::cout << "Post-transformation" << std::endl;
+    //std::cout << ip.x << ", " << ip.y << ", " << ip.z << ", " << ip.t <<std::endl;
+    //std::cout << transip[0] << ", " << transip[1] << ", " << transip[2] << ", " << transip[3] <<std::endl;
+    //std::cout << x[0] << ", " << x[1] << ", " << x[2] << ", " << x[3] <<std::endl;
+
 
    V.SetSize(vdim);
    if (Function)
    {
+      //std::cout << transip[0] << ", " << transip[1] << ", " << transip[2] << ", " << transip[3] <<std::endl;
       Function(transip, V);
    }
    else
@@ -723,10 +733,18 @@ void MatrixFunctionCoefficient::SetTime(real_t t)
 void MatrixFunctionCoefficient::Eval(DenseMatrix &K, ElementTransformation &T,
                                      const IntegrationPoint &ip)
 {
-   real_t x[3];
-   Vector transip(x, 3);
-
+   real_t x[4];
+   Vector transip(x, 4);
+//    std::cout << "ip.x = " << ip.x << std::endl;
+//    std::cout << "ip.y = " << ip.y << std::endl;
+//    std::cout << "ip.z = " << ip.z << std::endl;
+//    std::cout << "ip.t = " << ip.t << std::endl;
    T.Transform(ip, transip);
+//    std::cout << "tip.x = " << transip[0] << std::endl;
+//    std::cout << "tip.y = " << transip[1] << std::endl;
+//    std::cout << "tip.z = " << transip[2] << std::endl;
+//    std::cout << "tip.t = " << transip[3] << std::endl;
+
 
    K.SetSize(height, width);
 

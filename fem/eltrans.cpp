@@ -536,6 +536,7 @@ void IsoparametricTransformation::Transform (const IntegrationPoint &ip,
    MFEM_ASSERT(FElem != nullptr, "Must provide a valid FiniteElement object!");
    shape.SetSize(FElem->GetDof());
    trans.SetSize(PointMat.Height());
+    //PointMat.PrintMatlab(std::cout);
 
    FElem -> CalcShape(ip, shape);
    PointMat.Mult(shape, trans);

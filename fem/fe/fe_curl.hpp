@@ -21,18 +21,20 @@ namespace mfem
 class HCurl_PentatopeElement : public VectorFiniteElement
 {
     
-    static const double  tk1[10][4], tk2[10][4];
+    static const double  tk1[10][4], tk2[14][4];
     
 #ifndef MFEM_THREAD_SAFE
     mutable Vector shape_x, shape_y, shape_z, shape_t, shape_l;
     mutable Vector dshape_x, dshape_y, dshape_z, dshape_t, dshape_l;
-    mutable DenseMatrix u;
+    mutable DenseTensor u;
     mutable DenseMatrix Curlu;
 #endif
-    Array<int> dof2tk;
+    Array<int> dof2tk1;
+    Array<int> dof2tk2;
     DenseMatrixInverse Ti;
+    DenseMatrix T_inv;
     
-    ND_PentDofTransformation doftrans;
+    CURL_PentDofTransformation doftrans;
 
     
 public:
@@ -41,9 +43,9 @@ public:
                             DenseMatrix &shape) const override;
     virtual void CalcVShape(ElementTransformation &Trans,
                             DenseMatrix &shape) const override
-    { CalcVShape_DivSkew(Trans, shape); }
+    { CalcVShape_Hcurl(Trans, shape); }
     virtual void CalcCurlShape(const IntegrationPoint &ip,
-                                  DenseMatrix &SkwGradshape) const;
+                                  DenseMatrix &Curlshape) const;
     virtual void GetLocalInterpolation(ElementTransformation &Trans,
                                        DenseMatrix &I) const override
     {mfem_error("GetLocalInterpolaton error");}

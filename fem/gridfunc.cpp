@@ -1005,6 +1005,8 @@ void GridFunction::GetVectorValues(ElementTransformation &T,
 
    const FiniteElement *FElem = fes->GetFE(T.ElementNo);
    int dof = FElem->GetDof();
+    int spaceDim = fes->GetMesh()->SpaceDimension();
+
 
    Array<int> vdofs;
    DofTransformation * doftrans = fes->GetElementVDofs(T.ElementNo, vdofs);
@@ -1032,6 +1034,41 @@ void GridFunction::GetVectorValues(ElementTransformation &T,
          {
             vals(k,j) = shape * (&loc_data[dof * k]);
          }
+      }
+   }
+   else if ( ((FElem->GetMapType() == FiniteElement::H_CURL)||(FElem->GetMapType() == FiniteElement::H_DIV_SKEW)) && (spaceDim == 4))
+   {
+      int vdim = 12;
+      DenseMatrix vshape(dof, vdim);
+      DenseMatrix vshapefull(dof, spaceDim*spaceDim);
+
+      vals.SetSize(vdim, nip);
+      Vector val_j;
+
+      for (int j = 0; j < nip; j++)
+      {
+         const IntegrationPoint &ip = ir.IntPoint(j);
+         T.SetIntPoint(&ip);
+         FElem->CalcVShape(T, vshapefull);
+          for (int k = 0; k<dof; k++)
+          {
+              vshape(k, 0) = vshapefull(k, 1);
+              vshape(k, 1) = vshapefull(k, 2);
+              vshape(k, 2) = vshapefull(k, 3);
+              vshape(k, 3) = vshapefull(k, 6);
+              vshape(k, 4) = vshapefull(k, 7);
+              vshape(k, 5) = vshapefull(k, 11);
+              
+              vshape(k, 6) = vshapefull(k, 4);
+              vshape(k, 7) = vshapefull(k, 8);
+              vshape(k, 8) = vshapefull(k, 9);
+              vshape(k, 9) = vshapefull(k, 12);
+              vshape(k, 10) = vshapefull(k, 13);
+              vshape(k, 11) = vshapefull(k, 14);
+          }
+
+         vals.GetColumnReference(j, val_j);
+         vshape.MultTranspose(loc_data, val_j);
       }
    }
    else
@@ -2470,10 +2507,16 @@ void GridFunction::ProjectCoefficient(VectorCoefficient &vcoeff)
          doftrans = fes->GetElementVDofs(i, vdofs);
          vals.SetSize(vdofs.Size());
          fes->GetFE(i)->Project(vcoeff, *fes->GetElementTransformation(i), vals);
+          //vdofs.Print(std::cout);
+          //std::cout << std::endl;
+          //std::cout << "Pre Trans ----" << std::endl;
+          //vals.Print(std::cout);
          if (doftrans)
          {
             doftrans->TransformPrimal(vals);
          }
+          //std::cout << "Post Trans ----" << std::endl;
+          //vals.Print(std::cout);
          SetSubVector(vdofs, vals);
       }
    }
@@ -2891,6 +2934,7 @@ real_t GridFunction::ComputeL2Error(
          T->SetIntPoint(&ip);
          elem_error += ip.weight * T->Weight() * (loc_errs(j) * loc_errs(j));
       }
+       //std::cout << "Element Error = " << fabs(elem_error) << std::endl;
       // negative quadrature weights may cause the error to be negative
       error += fabs(elem_error);
    }

@@ -882,6 +882,9 @@ public:
 
          vshape.AddMult(matToVec, elvect);
       }
+           //std::cout << "Start new El Linear Int ------" << std::endl;
+//           elvect.Print(std::cout);
+//           std::cout << std::endl;
    }
 
    using LinearFormIntegrator::AssembleRHSElementVect;

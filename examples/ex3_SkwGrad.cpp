@@ -187,7 +187,7 @@ int main(int argc, char *argv[])
         }
     }
     
-   //cout << "\n Initial || E_h - E ||_{L^2} = " << x.ComputeL2Error(E,irs) << '\n' << endl;
+   cout << "\n Initial || E_h - E ||_{L^2} = " << x.ComputeL2Error(E,irs) << '\n' << endl;
    //cout << "Number of finite element unknowns: "
          //<< fespace->GetTrueVSize() << endl;
    
