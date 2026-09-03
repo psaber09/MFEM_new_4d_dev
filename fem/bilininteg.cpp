@@ -2655,10 +2655,10 @@ void CurlCurlIntegrator::AssembleElementMatrix
 
     }
     //std::cout << "Start of New Elmat Curl Int ------" << std::endl;
-//    real_t thres = 1e-16;
-//    elmat.Threshold(thres);
-//    elmat.PrintMatlab(std::cout);
-//    std::cout << std::endl;
+    real_t thres = 1e-16;
+    elmat.Threshold(thres);
+    elmat.PrintMatlab(std::cout);
+    std::cout << std::endl;
 }
 
 void SkwGradSkwGradIntegrator::AssembleElementMatrix

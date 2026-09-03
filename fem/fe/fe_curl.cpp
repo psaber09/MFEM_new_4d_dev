@@ -2111,7 +2111,6 @@ void HCurl_PentatopeElement::CalcCurlShape(const IntegrationPoint &ip,
                             Curlu(o, 3) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * F_vec[3]) + McrossN[3] );
                             
 
-
                             o++;
                             
                             
@@ -2389,8 +2388,6 @@ void HCurl_PentatopeElement::CalcCurlShape(const IntegrationPoint &ip,
                             Curlu(o, 3) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * F_vec[3]) + McrossN[3] );
                             
 
-
-
                             o++;
                         }
                         
@@ -2592,8 +2589,6 @@ void HCurl_PentatopeElement::CalcCurlShape(const IntegrationPoint &ip,
                             Curlu(o, 3) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * F_vec[3]) + McrossN[3] );
                             
 
-
-
                             o++;
                         }
                         
@@ -2793,8 +2788,6 @@ void HCurl_PentatopeElement::CalcCurlShape(const IntegrationPoint &ip,
                             Curlu(o, 3) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * F_vec[3]) + McrossN[3] );
                             
 
-
-
                             o++;
                             
                         }
@@ -2806,373 +2799,372 @@ void HCurl_PentatopeElement::CalcCurlShape(const IntegrationPoint &ip,
     }// end of Facets
     
     //Interiors
-//    for (int r = 0; r<6; r++)
-//    {
-//        if (r ==0)
-//        {
-//            //case where (a,b,c,d,e) = (0,1,2,3,4)
-//            // define lamda
-//            La = bary_vector[0];
-//            Lb = bary_vector[1];
-//            Lc = bary_vector[2];
-//            Ld = bary_vector[3];
-//            Le = bary_vector[4];
-//            
-//            // define grad(lamda)
-//            grad_La = gradbary_vector[0];
-//            grad_Lb = gradbary_vector[1];
-//            grad_Lc = gradbary_vector[2];
-//            grad_Ld = gradbary_vector[3];
-//            grad_Le = gradbary_vector[4];
-//            
-//            // define a,b,c,d
-//            a = 0;
-//            b = 1;
-//            c = 2;
-//            d = 3;
-//            
-//        }
-//        else if (r==1)
-//        {
-//            //case where (a,b,c,d,e) = (1,2,3,4,0)
-//            // define lamda
-//            La = bary_vector[1];
-//            Lb = bary_vector[2];
-//            Lc = bary_vector[3];
-//            Ld = bary_vector[4];
-//            Le = bary_vector[0];
-//            
-//            // define grad(lamda)
-//            grad_La = gradbary_vector[1];
-//            grad_Lb = gradbary_vector[2];
-//            grad_Lc = gradbary_vector[3];
-//            grad_Ld = gradbary_vector[4];
-//            grad_Le = gradbary_vector[0];
-//            
-//            // define a,b,c,d
-//            a = 1;
-//            b = 2;
-//            c = 3;
-//            d = 4;
-//            
-//            
-//        }
-//        else if (r==2)
-//        {
-//            //case where (a,b,c,d,e) = (2,3,4,0,1)
-//            // define lamda
-//            La = bary_vector[2];
-//            Lb = bary_vector[3];
-//            Lc = bary_vector[4];
-//            Ld = bary_vector[0];
-//            Le = bary_vector[1];
-//            
-//            // define grad(lamda)
-//            grad_La = gradbary_vector[2];
-//            grad_Lb = gradbary_vector[3];
-//            grad_Lc = gradbary_vector[4];
-//            grad_Ld = gradbary_vector[0];
-//            grad_Le = gradbary_vector[1];
-//            
-//            // define a,b,c,d
-//            a = 2;
-//            b = 3;
-//            c = 4;
-//            d = 0;
-//            
-//        }
-//        else if (r==3)
-//        {
-//            //case where (a,b,c,d,e) = (3,4,0,1,2)
-//            // define lamda
-//            La = bary_vector[3];
-//            Lb = bary_vector[4];
-//            Lc = bary_vector[0];
-//            Ld = bary_vector[1];
-//            Le = bary_vector[2];
-//            
-//            // define grad(lamda)
-//            grad_La = gradbary_vector[3];
-//            grad_Lb = gradbary_vector[4];
-//            grad_Lc = gradbary_vector[0];
-//            grad_Ld = gradbary_vector[1];
-//            grad_Le = gradbary_vector[2];
-//            
-//            // define a,b,c,d
-//            a = 3;
-//            b = 4;
-//            c = 0;
-//            d = 1;
-//            
-//        }
-//        else if (r==4)
-//        {
-//            //case where (a,b,c,d,e) = (4,0,1,2,3)
-//            // define lamda
-//            La = bary_vector[4];
-//            Lb = bary_vector[0];
-//            Lc = bary_vector[1];
-//            Ld = bary_vector[2];
-//            Le = bary_vector[3];
-//            
-//            // define grad(lamda)
-//            grad_La = gradbary_vector[4];
-//            grad_Lb = gradbary_vector[0];
-//            grad_Lc = gradbary_vector[1];
-//            grad_Ld = gradbary_vector[2];
-//            grad_Le = gradbary_vector[3];
-//            
-//            // define a,b,c,d
-//            a = 4;
-//            b = 0;
-//            c = 1;
-//            d = 2;
-//            
-//            
-//        }
-//        else if (r==5)
-//        {
-//            //case where (a,b,c,d,e) = (0,1,3,2,4)
-//            // define lamda
-//            La = bary_vector[0];
-//            Lb = bary_vector[1];
-//            Lc = bary_vector[3];
-//            Ld = bary_vector[2];
-//            Le = bary_vector[4];
-//            
-//            // define grad(lamda)
-//            grad_La = gradbary_vector[0];
-//            grad_Lb = gradbary_vector[1];
-//            grad_Lc = gradbary_vector[3];
-//            grad_Ld = gradbary_vector[2];
-//            grad_Le = gradbary_vector[4];
-//            
-//            // define a,b,c,d
-//            a = 0;
-//            b = 1;
-//            c = 3;
-//            d = 2;
-//            
-//        }
-//        else
-//        {
-//            mfem_error("Invaild Bubble");
-//        }
-//        
-//        for(int i=0; i<p;i++)
-//        {
-//            for(int j=0; j<p;j++)
-//            {
-//                for(int l=1; l<p;l++)
-//                {
-//                    for (int m=1; m<p; m++)
-//                    {
-//                        if((i+j+l+m)<p)
-//                        {
-//                            
-//                            
-//                            // compute polynomials
-//                            std::vector<double> Legendre_i;
-//                            std::vector<double> Legendre_i_dx;
-//                            std::vector<double> Legendre_i_dt;
-//                            double x = Lb;
-//                            double y = La + Lb;
-//                            //poly1d.CalcLegendreShifted(i, x, y, Legendre_i);
-//                            poly1d.CalcScaledLegendreDerivative(i, x, y, Legendre_i, Legendre_i_dx, Legendre_i_dt);
-//
-//                        
-//                            std::vector<double> Jacobi_j;
-//                            std::vector<double> Jacobi_j_ref;
-//                            x = Lc;
-//                            y = La + Lb + Lc;
-//                            double alpha = 2*i + 1;
-//                            poly1d.CalcJacobi(j, x, y, alpha, Jacobi_j);
-//                            // Derivative Jacobi Poly
-//                            std::vector<double> Jacobi_j_dx;
-//                            std::vector<double> Jacobi_j_dt;
-//                            poly1d.CalcScaledJacobiDerivative(j, alpha, x, y, Jacobi_j_ref, Jacobi_j_dx, Jacobi_j_dt);
-//                            
-//                            
-//                            std::vector<double> Int_Jacobi_l;
-//                            std::vector<double> Jacobi_l;
-//                            std::vector<double> R_l;
-//                            x = Ld;
-//                            y = La + Lb + Lc + Ld;
-//                            alpha = 2*(i + j + 1);
-//                            poly1d.CalcIntJacobi(l, x, y, alpha, Int_Jacobi_l);
-//                            poly1d.CalcJacobi(l, x, y, alpha, Jacobi_l);
-//                            poly1d.CalcRJacobi(l, x, y, alpha, R_l);
-//                            
-//                            std::vector<double> Int_Jacobi_m;
-//                            std::vector<double> Jacobi_m;
-//                            //std::vector<double> R_m;
-//                            x = Le;
-//                            y = 1.0;
-//                            alpha = 2*(i + j + l);
-//                            poly1d.CalcIntJacobi(m, x, y, alpha, Int_Jacobi_m);
-//                            poly1d.CalcJacobi(m, x, y, alpha, Jacobi_m);
-//                            //poly1d.CalcRJacobi(m, x, y, alpha, R_m);
-//                            
-//
-//                            
-//                            // Scaled Skew-sym outer product
-//                            DenseMatrix skw_sym_outerprod_1 = skw_sym_outerprod_fnc(grad_Lb, grad_Lc);
-//
-//                            DenseMatrix skw_sym_outerprod_2 = skw_sym_outerprod_fnc(grad_Lc, grad_La);
-//
-//                            DenseMatrix skw_sym_outerprod_3 = skw_sym_outerprod_fnc(grad_La, grad_Lb);
-//                            
-//                            
-//                            
-//                            // grad of Legendre and Jacobi Polynomials (scalar part)
-//                            double dscalar_x = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[0] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[0] + grad_Lb[0])) * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1]
-//                            
-//                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[0] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[0] + grad_Lb[0] + grad_Lc[0]) ) * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1]
-//                            
-//                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2]*grad_Ld[0] + R_l[R_l.size()-2] * (grad_La[0] + grad_Lb[0] + grad_Lc[0] + grad_Ld[0])) * Int_Jacobi_m[Int_Jacobi_m.size()-1]
-//                            
-//                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (Jacobi_m[Jacobi_m.size()-2]*grad_Le[0]);
-//                            
-//                            
-//                            double dscalar_y = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[1] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[1] + grad_Lb[1])) * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] *Int_Jacobi_m[Int_Jacobi_m.size()-1]
-//                            
-//                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[1] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[1] + grad_Lb[1] + grad_Lc[1]) ) * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1]
-//                            
-//                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2]*grad_Ld[1] + R_l[R_l.size()-2] * (grad_La[1] + grad_Lb[1] + grad_Lc[1] + grad_Ld[1])) * Int_Jacobi_m[Int_Jacobi_m.size()-1]
-//                            
-//                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (Jacobi_m[Jacobi_m.size()-2]*grad_Le[1]);
-//                            
-//                            
-//                            double dscalar_z = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[2] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[2] + grad_Lb[2])) * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] *Int_Jacobi_m[Int_Jacobi_m.size()-1]
-//                            
-//                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[2] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[2] + grad_Lb[2] + grad_Lc[2]) ) * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1]
-//                            
-//                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2]*grad_Ld[2] + R_l[R_l.size()-2] * (grad_La[2] + grad_Lb[2] + grad_Lc[2] + grad_Ld[2])) * Int_Jacobi_m[Int_Jacobi_m.size()-1]
-//                            
-//                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (Jacobi_m[Jacobi_m.size()-2]*grad_Le[2]);
-//                            
-//                            
-//                            double dscalar_t = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[3] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[3] + grad_Lb[3])) * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] *Int_Jacobi_m[Int_Jacobi_m.size()-1]
-//                            
-//                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[3] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[3] + grad_Lb[3] + grad_Lc[3]) ) * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1]
-//                            
-//                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2]*grad_Ld[3] + R_l[R_l.size()-2] * (grad_La[3] + grad_Lb[3] + grad_Lc[3] + grad_Ld[3])) * Int_Jacobi_m[Int_Jacobi_m.size()-1]
-//                            
-//                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (Jacobi_m[Jacobi_m.size()-2]*grad_Le[3]);
-//                            
-//                            
-//
-//                            
-//                            // curl of skw-sym part
-//                            
-//                            std::vector<double> F_vec(4);
-//                            // x-component
-//                            F_vec[0] = 2.0 * ( grad_La[1]*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + grad_Lb[1]*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + grad_Lc[1]*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
-//                            
-//                            
-//                            - 2.0 * ( grad_La[2]*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + grad_Lb[2]*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + grad_Lc[2]*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
-//                            
-//                            
-//                            + 2.0 * ( grad_La[3]*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + grad_Lb[3]*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + grad_Lc[3]*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) );
-//                            
-//                            
-//                            // y-component
-//                            F_vec[1] = -2.0 * ( grad_La[0]*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + grad_Lb[0]*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + grad_Lc[0]*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
-//                            
-//                            
-//                            + 2.0 * ( grad_La[2]*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + grad_Lb[2]*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + grad_Lc[2]*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
-//                            
-//                            
-//                            - 2.0 * ( grad_La[3]*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + grad_Lb[3]*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + grad_Lc[3]*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) );
-//                            
-//                            
-//                            // z-component
-//                            F_vec[2] = 2.0 * ( grad_La[0]*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + grad_Lb[0]*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + grad_Lc[0]*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
-//                            
-//                            
-//                            - 2.0 * ( grad_La[1]*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + grad_Lb[1]*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + grad_Lc[1]*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
-//                            
-//                            
-//                            + 2.0 * ( grad_La[3]*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + grad_Lb[3]*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + grad_Lc[3]*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
-//                            
-//                            
-//                            // t-component
-//                            F_vec[3] = -2.0 * ( grad_La[0]*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + grad_Lb[0]*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + grad_Lc[0]*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) )
-//                             
-//                            
-//                            + 2.0 * ( grad_La[1]*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + grad_Lb[1]*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + grad_Lc[1]*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) )
-//                            
-//                            
-//                            - 2.0 * ( grad_La[2]*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + grad_Lb[2]*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + grad_Lc[2]*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
-//                            
-//                            
-//
-//                            // grad(scalar-part) X skw-sym_mat
-//                            
-//                            std::vector<double> McrossN(4);
-//                            // x-component
-//                            McrossN[0] = 2.0 * dscalar_y * ( La*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + Lb*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + Lc*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
-//                            
-//                            
-//                            - 2.0 * dscalar_z * ( La*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + Lb*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + Lc*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
-//                            
-//                            
-//                            + 2.0 * dscalar_t * ( La*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + Lb*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + Lc*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) );
-//                            
-//                            
-//                            // y-component
-//                            McrossN[1] = -2.0 * dscalar_x * ( La*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + Lb*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + Lc*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
-//                            
-//                            
-//                            + 2.0 * dscalar_z * ( La*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + Lb*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + Lc*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
-//                            
-//                            
-//                            - 2.0 * dscalar_t * ( La*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + Lb*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + Lc*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) );
-//                            
-//                            
-//                            // z-component
-//                            McrossN[2] = 2.0 * dscalar_x * ( La*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + Lb*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + Lc*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
-//                            
-//                            
-//                            - 2.0 * dscalar_y * ( La*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + Lb*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + Lc*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
-//                            
-//                            
-//                            + 2.0 * dscalar_t * ( La*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + Lb*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + Lc*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
-//                            
-//                            
-//                            // t-component
-//                            McrossN[3] = -2.0 * dscalar_x * ( La*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + Lb*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + Lc*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) )
-//                             
-//                            
-//                            + 2.0 * dscalar_y * ( La*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + Lb*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + Lc*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) )
-//                            
-//                            
-//                            - 2.0 * dscalar_z * ( La*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + Lb*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + Lc*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
-//                            
-//                            
-//                            // Add Basis Funcitons
-//                            double s_factor = 0.5;
-//                            
-//                            Curlu(o, 0) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * F_vec[0]) + McrossN[0] );
-//                            
-//                            Curlu(o, 1) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * F_vec[1]) + McrossN[1] );
-//
-//                            Curlu(o, 2) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * F_vec[2]) + McrossN[2] );
-//
-//                            Curlu(o, 3) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * F_vec[3]) + McrossN[3] );
-//                            
-//
-//
-//
-//                            o++;
-//                            
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//        
-//    }// End of Interiors
+    for (int r = 0; r<6; r++)
+    {
+        if (r ==0)
+        {
+            //case where (a,b,c,d,e) = (0,1,2,3,4)
+            // define lamda
+            La = bary_vector[0];
+            Lb = bary_vector[1];
+            Lc = bary_vector[2];
+            Ld = bary_vector[3];
+            Le = bary_vector[4];
+            
+            // define grad(lamda)
+            grad_La = gradbary_vector[0];
+            grad_Lb = gradbary_vector[1];
+            grad_Lc = gradbary_vector[2];
+            grad_Ld = gradbary_vector[3];
+            grad_Le = gradbary_vector[4];
+            
+            // define a,b,c,d
+            a = 0;
+            b = 1;
+            c = 2;
+            d = 3;
+            
+        }
+        else if (r==1)
+        {
+            //case where (a,b,c,d,e) = (1,2,3,4,0)
+            // define lamda
+            La = bary_vector[1];
+            Lb = bary_vector[2];
+            Lc = bary_vector[3];
+            Ld = bary_vector[4];
+            Le = bary_vector[0];
+            
+            // define grad(lamda)
+            grad_La = gradbary_vector[1];
+            grad_Lb = gradbary_vector[2];
+            grad_Lc = gradbary_vector[3];
+            grad_Ld = gradbary_vector[4];
+            grad_Le = gradbary_vector[0];
+            
+            // define a,b,c,d
+            a = 1;
+            b = 2;
+            c = 3;
+            d = 4;
+            
+            
+        }
+        else if (r==2)
+        {
+            //case where (a,b,c,d,e) = (2,3,4,0,1)
+            // define lamda
+            La = bary_vector[2];
+            Lb = bary_vector[3];
+            Lc = bary_vector[4];
+            Ld = bary_vector[0];
+            Le = bary_vector[1];
+            
+            // define grad(lamda)
+            grad_La = gradbary_vector[2];
+            grad_Lb = gradbary_vector[3];
+            grad_Lc = gradbary_vector[4];
+            grad_Ld = gradbary_vector[0];
+            grad_Le = gradbary_vector[1];
+            
+            // define a,b,c,d
+            a = 2;
+            b = 3;
+            c = 4;
+            d = 0;
+            
+        }
+        else if (r==3)
+        {
+            //case where (a,b,c,d,e) = (3,4,0,1,2)
+            // define lamda
+            La = bary_vector[3];
+            Lb = bary_vector[4];
+            Lc = bary_vector[0];
+            Ld = bary_vector[1];
+            Le = bary_vector[2];
+            
+            // define grad(lamda)
+            grad_La = gradbary_vector[3];
+            grad_Lb = gradbary_vector[4];
+            grad_Lc = gradbary_vector[0];
+            grad_Ld = gradbary_vector[1];
+            grad_Le = gradbary_vector[2];
+            
+            // define a,b,c,d
+            a = 3;
+            b = 4;
+            c = 0;
+            d = 1;
+            
+        }
+        else if (r==4)
+        {
+            //case where (a,b,c,d,e) = (4,0,1,2,3)
+            // define lamda
+            La = bary_vector[4];
+            Lb = bary_vector[0];
+            Lc = bary_vector[1];
+            Ld = bary_vector[2];
+            Le = bary_vector[3];
+            
+            // define grad(lamda)
+            grad_La = gradbary_vector[4];
+            grad_Lb = gradbary_vector[0];
+            grad_Lc = gradbary_vector[1];
+            grad_Ld = gradbary_vector[2];
+            grad_Le = gradbary_vector[3];
+            
+            // define a,b,c,d
+            a = 4;
+            b = 0;
+            c = 1;
+            d = 2;
+            
+            
+        }
+        else if (r==5)
+        {
+            //case where (a,b,c,d,e) = (0,1,3,2,4)
+            // define lamda
+            La = bary_vector[0];
+            Lb = bary_vector[1];
+            Lc = bary_vector[3];
+            Ld = bary_vector[2];
+            Le = bary_vector[4];
+            
+            // define grad(lamda)
+            grad_La = gradbary_vector[0];
+            grad_Lb = gradbary_vector[1];
+            grad_Lc = gradbary_vector[3];
+            grad_Ld = gradbary_vector[2];
+            grad_Le = gradbary_vector[4];
+            
+            // define a,b,c,d
+            a = 0;
+            b = 1;
+            c = 3;
+            d = 2;
+            
+        }
+        else
+        {
+            mfem_error("Invaild Bubble");
+        }
+        
+        for(int i=0; i<p;i++)
+        {
+            for(int j=0; j<p;j++)
+            {
+                for(int l=1; l<p;l++)
+                {
+                    for (int m=1; m<p; m++)
+                    {
+                        if((i+j+l+m)<p)
+                        {
+                            
+                            
+                            // compute polynomials
+                            std::vector<double> Legendre_i;
+                            std::vector<double> Legendre_i_dx;
+                            std::vector<double> Legendre_i_dt;
+                            double x = Lb;
+                            double y = La + Lb;
+                            //poly1d.CalcLegendreShifted(i, x, y, Legendre_i);
+                            poly1d.CalcScaledLegendreDerivative(i, x, y, Legendre_i, Legendre_i_dx, Legendre_i_dt);
+
+                        
+                            std::vector<double> Jacobi_j;
+                            std::vector<double> Jacobi_j_ref;
+                            x = Lc;
+                            y = La + Lb + Lc;
+                            double alpha = 2*i + 1;
+                            poly1d.CalcJacobi(j, x, y, alpha, Jacobi_j);
+                            // Derivative Jacobi Poly
+                            std::vector<double> Jacobi_j_dx;
+                            std::vector<double> Jacobi_j_dt;
+                            poly1d.CalcScaledJacobiDerivative(j, alpha, x, y, Jacobi_j_ref, Jacobi_j_dx, Jacobi_j_dt);
+                            
+                            
+                            std::vector<double> Int_Jacobi_l;
+                            std::vector<double> Jacobi_l;
+                            std::vector<double> R_l;
+                            x = Ld;
+                            y = La + Lb + Lc + Ld;
+                            alpha = 2*(i + j + 1);
+                            poly1d.CalcIntJacobi(l, x, y, alpha, Int_Jacobi_l);
+                            poly1d.CalcJacobi(l, x, y, alpha, Jacobi_l);
+                            poly1d.CalcRJacobi(l, x, y, alpha, R_l);
+                            
+                            std::vector<double> Int_Jacobi_m;
+                            std::vector<double> Jacobi_m;
+                            //std::vector<double> R_m;
+                            x = Le;
+                            y = 1.0;
+                            alpha = 2*(i + j + l);
+                            poly1d.CalcIntJacobi(m, x, y, alpha, Int_Jacobi_m);
+                            poly1d.CalcJacobi(m, x, y, alpha, Jacobi_m);
+                            //poly1d.CalcRJacobi(m, x, y, alpha, R_m);
+                            
+
+                            
+                            // Scaled Skew-sym outer product
+                            DenseMatrix skw_sym_outerprod_1 = skw_sym_outerprod_fnc(grad_Lb, grad_Lc);
+
+                            DenseMatrix skw_sym_outerprod_2 = skw_sym_outerprod_fnc(grad_Lc, grad_La);
+
+                            DenseMatrix skw_sym_outerprod_3 = skw_sym_outerprod_fnc(grad_La, grad_Lb);
+                            
+                            
+                            
+                            // grad of Legendre and Jacobi Polynomials (scalar part)
+                            double dscalar_x = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[0] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[0] + grad_Lb[0])) * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[0] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[0] + grad_Lb[0] + grad_Lc[0]) ) * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2]*grad_Ld[0] + R_l[R_l.size()-2] * (grad_La[0] + grad_Lb[0] + grad_Lc[0] + grad_Ld[0])) * Int_Jacobi_m[Int_Jacobi_m.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (Jacobi_m[Jacobi_m.size()-2]*grad_Le[0]);
+                            
+                            
+                            double dscalar_y = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[1] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[1] + grad_Lb[1])) * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] *Int_Jacobi_m[Int_Jacobi_m.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[1] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[1] + grad_Lb[1] + grad_Lc[1]) ) * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2]*grad_Ld[1] + R_l[R_l.size()-2] * (grad_La[1] + grad_Lb[1] + grad_Lc[1] + grad_Ld[1])) * Int_Jacobi_m[Int_Jacobi_m.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (Jacobi_m[Jacobi_m.size()-2]*grad_Le[1]);
+                            
+                            
+                            double dscalar_z = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[2] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[2] + grad_Lb[2])) * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] *Int_Jacobi_m[Int_Jacobi_m.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[2] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[2] + grad_Lb[2] + grad_Lc[2]) ) * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2]*grad_Ld[2] + R_l[R_l.size()-2] * (grad_La[2] + grad_Lb[2] + grad_Lc[2] + grad_Ld[2])) * Int_Jacobi_m[Int_Jacobi_m.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (Jacobi_m[Jacobi_m.size()-2]*grad_Le[2]);
+                            
+                            
+                            double dscalar_t = (Legendre_i_dx[Legendre_i_dx.size()-1]*grad_Lb[3] + Legendre_i_dt[Legendre_i_dt.size()-1]*(grad_La[3] + grad_Lb[3])) * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] *Int_Jacobi_m[Int_Jacobi_m.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * (Jacobi_j_dx[Jacobi_j_dx.size()-1]*grad_Lc[3] + Jacobi_j_dt[Jacobi_j_dt.size()-1] * (grad_La[3] + grad_Lb[3] + grad_Lc[3]) ) * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * (Jacobi_l[Jacobi_l.size()-2]*grad_Ld[3] + R_l[R_l.size()-2] * (grad_La[3] + grad_Lb[3] + grad_Lc[3] + grad_Ld[3])) * Int_Jacobi_m[Int_Jacobi_m.size()-1]
+                            
+                            + Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * (Jacobi_m[Jacobi_m.size()-2]*grad_Le[3]);
+                            
+                            
+
+                            
+                            // curl of skw-sym part
+                            
+                            std::vector<double> F_vec(4);
+                            // x-component
+                            F_vec[0] = 2.0 * ( grad_La[1]*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + grad_Lb[1]*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + grad_Lc[1]*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * ( grad_La[2]*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + grad_Lb[2]*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + grad_Lc[2]*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * ( grad_La[3]*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + grad_Lb[3]*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + grad_Lc[3]*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) );
+                            
+                            
+                            // y-component
+                            F_vec[1] = -2.0 * ( grad_La[0]*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + grad_Lb[0]*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + grad_Lc[0]*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * ( grad_La[2]*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + grad_Lb[2]*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + grad_Lc[2]*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * ( grad_La[3]*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + grad_Lb[3]*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + grad_Lc[3]*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) );
+                            
+                            
+                            // z-component
+                            F_vec[2] = 2.0 * ( grad_La[0]*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + grad_Lb[0]*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + grad_Lc[0]*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * ( grad_La[1]*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + grad_Lb[1]*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + grad_Lc[1]*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * ( grad_La[3]*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + grad_Lb[3]*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + grad_Lc[3]*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
+                            
+                            
+                            // t-component
+                            F_vec[3] = -2.0 * ( grad_La[0]*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + grad_Lb[0]*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + grad_Lc[0]*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) )
+                             
+                            
+                            + 2.0 * ( grad_La[1]*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + grad_Lb[1]*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + grad_Lc[1]*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) )
+                            
+                            
+                            - 2.0 * ( grad_La[2]*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + grad_Lb[2]*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + grad_Lc[2]*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
+                            
+                            
+
+                            // grad(scalar-part) X skw-sym_mat
+                            
+                            std::vector<double> McrossN(4);
+                            // x-component
+                            McrossN[0] = 2.0 * dscalar_y * ( La*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + Lb*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + Lc*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * dscalar_z * ( La*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + Lb*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + Lc*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * dscalar_t * ( La*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + Lb*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + Lc*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) );
+                            
+                            
+                            // y-component
+                            McrossN[1] = -2.0 * dscalar_x * ( La*(grad_Lb[2]*grad_Lc[3] - grad_Lc[2]*grad_Lb[3]) + Lb*(grad_Lc[2]*grad_La[3] - grad_La[2]*grad_Lc[3]) + Lc*(grad_La[2]*grad_Lb[3] - grad_Lb[2]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * dscalar_z * ( La*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + Lb*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + Lc*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * dscalar_t * ( La*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + Lb*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + Lc*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) );
+                            
+                            
+                            // z-component
+                            McrossN[2] = 2.0 * dscalar_x * ( La*(grad_Lb[1]*grad_Lc[3] - grad_Lc[1]*grad_Lb[3]) + Lb*(grad_Lc[1]*grad_La[3] - grad_La[1]*grad_Lc[3]) + Lc*(grad_La[1]*grad_Lb[3] - grad_Lb[1]*grad_La[3]) )
+                            
+                            
+                            - 2.0 * dscalar_y * ( La*(grad_Lb[0]*grad_Lc[3] - grad_Lc[0]*grad_Lb[3]) + Lb*(grad_Lc[0]*grad_La[3] - grad_La[0]*grad_Lc[3]) + Lc*(grad_La[0]*grad_Lb[3] - grad_Lb[0]*grad_La[3]) )
+                            
+                            
+                            + 2.0 * dscalar_t * ( La*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + Lb*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + Lc*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
+                            
+                            
+                            // t-component
+                            McrossN[3] = -2.0 * dscalar_x * ( La*(grad_Lb[1]*grad_Lc[2] - grad_Lc[1]*grad_Lb[2]) + Lb*(grad_Lc[1]*grad_La[2] - grad_La[1]*grad_Lc[2]) + Lc*(grad_La[1]*grad_Lb[2] - grad_Lb[1]*grad_La[2]) )
+                             
+                            
+                            + 2.0 * dscalar_y * ( La*(grad_Lb[0]*grad_Lc[2] - grad_Lc[0]*grad_Lb[2]) + Lb*(grad_Lc[0]*grad_La[2] - grad_La[0]*grad_Lc[2]) + Lc*(grad_La[0]*grad_Lb[2] - grad_Lb[0]*grad_La[2]) )
+                            
+                            
+                            - 2.0 * dscalar_z * ( La*(grad_Lb[0]*grad_Lc[1] - grad_Lc[0]*grad_Lb[1]) + Lb*(grad_Lc[0]*grad_La[1] - grad_La[0]*grad_Lc[1]) + Lc*(grad_La[0]*grad_Lb[1] - grad_Lb[0]*grad_La[1]) );
+                            
+                            
+                            // Add Basis Funcitons
+                            double s_factor = 0.5;
+                            
+                            Curlu(o, 0) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * F_vec[0]) + McrossN[0] );
+                            
+                            Curlu(o, 1) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * F_vec[1]) + McrossN[1] );
+
+                            Curlu(o, 2) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * F_vec[2]) + McrossN[2] );
+
+                            Curlu(o, 3) = s_factor * ( (Legendre_i[Legendre_i.size()-1] * Jacobi_j[Jacobi_j.size()-1] * Int_Jacobi_l[Int_Jacobi_l.size()-1] * Int_Jacobi_m[Int_Jacobi_m.size()-1] * F_vec[3]) + McrossN[3] );
+                            
+
+                        
+                            o++;
+                            
+                        }
+                    }
+                }
+            }
+        }
+        
+    }// End of Interiors
 
     
     
