@@ -2565,8 +2565,8 @@ L2_FECollection::L2_FECollection(const int p, const int dim, const int btype,
          }
          else
          {
-            L2_Elements[Geometry::PENTATOPE] = new L2_PentatopeElement(p, btype);
-            //L2_Elements[Geometry::PENTATOPE] = new L2_PentatopeElement_MMCP(p, btype);
+            //L2_Elements[Geometry::PENTATOPE] = new L2_PentatopeElement(p, btype);
+            L2_Elements[Geometry::PENTATOPE] = new L2_PentatopeElement_MMCP(p, btype);
 
          }
          L2_Elements[Geometry::PENTATOPE]->SetMapType(map_type);
