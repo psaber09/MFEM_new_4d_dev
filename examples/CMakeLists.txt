@@ -18,6 +18,7 @@ list(APPEND ALL_EXE_SRCS
   vector-Adv-Diff_fixed.cpp
   ex1.cpp
   ex1_H1.cpp
+  ex1_L2.cpp
   Advection_exp.cpp
   ex2.cpp
   ex3.cpp
