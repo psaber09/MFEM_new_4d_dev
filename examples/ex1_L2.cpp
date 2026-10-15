@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
     
    if (kappa < 0)
    {
-      kappa = 50*(order+1)*(order+2);
+      kappa = 1000*(order+1)*(order+2);
    }
    args.PrintOptions(cout);
 
@@ -171,7 +171,7 @@ int main(int argc, char *argv[])
     }
 
     // 7b. Compute and print the L^2 norm of the error.
-   cout << "\n Initial || E_h - E ||_{L^2} = " << x.ComputeL2Error(E, irs) << '\n' << endl;
+   //cout << "\n Initial || E_h - E ||_{L^2} = " << x.ComputeL2Error(E, irs) << '\n' << endl;
 
    // 8. Set up the bilinear form a(.,.) on the finite element space
    //    corresponding to the Laplacian operator -Delta, by adding the Diffusion
@@ -223,13 +223,16 @@ int main(int argc, char *argv[])
      {
          #ifndef MFEM_USE_SUITESPARSE
          // Use GMRES with a Gauss-Seidel preconditioner
-         GSSmoother M((SparseMatrix&)(*A));  // Gauss-Seidel preconditioner
+         BlockILU prec(fespace.GetTypicalFE()->GetDof(),
+              BlockILU::Reordering::MINIMUM_DISCARDED_FILL,0);
+         //GSSmoother M((SparseMatrix&)(*A));  // Gauss-Seidel preconditioner
          GMRESSolver gmres;                  // Create GMRES solver
          gmres.SetKDim(9000);                 // Set the Krylov subspace dimension (restart size)
          gmres.SetMaxIter(50000);              // Set maximum iterations
          gmres.SetRelTol(1e-12);             // Set relative tolerance
          gmres.SetPrintLevel(1);             // Print convergence information
-         gmres.SetPreconditioner(M);         // Set the preconditioner
+         //gmres.SetPreconditioner(M);         // Set the preconditioner
+         gmres.SetPreconditioner(prec);         // Set the preconditioner
          gmres.SetOperator(*A);              // Set the operator
          gmres.Mult(B, X);                   // Solve the system
          #else

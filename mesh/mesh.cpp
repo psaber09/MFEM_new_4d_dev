@@ -9143,12 +9143,6 @@ void Mesh::GenerateFaces()
     for (int i = 0; i < NumOfElements; ++i)
     {
         elements[i]->GetVertices(v);
-//        std::cout << "Vertex 1: " << v[0] << std::endl;
-//        std::cout << "Vertex 2: " << v[1] << std::endl;
-//        std::cout << "Vertex 3: " << v[2] << std::endl;
-//        std::cout << "Vertex 4: " << v[3] << std::endl;
-//        std::cout << "Vertex 5: " << v[4] << std::endl;
-
         if (Dim == 1)
         {
             AddPointFaceElement(0, v[0], i);
