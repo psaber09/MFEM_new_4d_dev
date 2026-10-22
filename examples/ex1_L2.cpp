@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
    const char *mesh_file = "../data/star.mesh";
    int ref_levels = -1;
    int order = 1;
-   real_t sigma = -1.0;
+   real_t sigma = -1.0;  // SIPM sigma = -1; NSIPM sigma = 1;
    real_t kappa = -1.0;
    real_t eta = 0.0;
    bool pa = false;
@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
     
    if (kappa < 0)
    {
-      kappa = 1000*(order+1)*(order+2);
+      kappa = 3*(order+1)*(order+2);
    }
    args.PrintOptions(cout);
 
@@ -141,6 +141,7 @@ int main(int argc, char *argv[])
    //    the FEM linear system.
    LinearForm b(&fespace);
    ConstantCoefficient one(1.0);
+   ConstantCoefficient beta(1.0);
    ConstantCoefficient zero(0.0);
    FunctionCoefficient f(f_exact);
    FunctionCoefficient E(E_exact);
@@ -180,9 +181,10 @@ int main(int argc, char *argv[])
    //    is no need for dof elimination. After assembly and finalizing we
    //    extract the corresponding sparse matrix A.
    BilinearForm a(&fespace);
-   a.AddDomainIntegrator(new DiffusionIntegrator(one));
-   a.AddInteriorFaceIntegrator(new DGDiffusionIntegrator(one, sigma, kappa));
-   a.AddBdrFaceIntegrator(new DGDiffusionIntegrator(one, sigma, kappa));
+   a.AddDomainIntegrator(new DiffusionIntegrator(beta));
+   //a.AddDomainIntegrator(new MassIntegrator(one));
+   a.AddInteriorFaceIntegrator(new DGDiffusionIntegrator(beta, sigma, kappa));
+   a.AddBdrFaceIntegrator(new DGDiffusionIntegrator(beta, sigma, kappa));
    if (eta > 0)
    {
       MFEM_VERIFY(!pa, "BR2 not yet compatible with partial assembly.");
@@ -376,7 +378,13 @@ double f_exact(const Vector &x)
     
     if (dim == 4)
     {
+        double eps = 1E-7;
         f_out = 2.0*((x(1)*(1. - x(1))* x(2)*(1. - x(2)) * x(3)*(1. - x(3))) + (x(0)*(1. - x(0))* x(2)*(1. - x(2)) * x(3)*(1. - x(3))) + (x(0)*(1. - x(0))* x(1)*(1. - x(1)) * x(3)*(1. - x(3))) + (x(0)*(1. - x(0))* x(1)*(1. - x(1)) * x(2)*(1. - x(2))));
+        // With Reaction Term
+        //f_out = eps*2.0*((x(1)*(1. - x(1))* x(2)*(1. - x(2)) * x(3)*(1. - x(3))) + (x(0)*(1. - x(0))* x(2)*(1. - x(2)) * x(3)*(1. - x(3))) + (x(0)*(1. - x(0))* x(1)*(1. - x(1)) * x(3)*(1. - x(3))) + (x(0)*(1. - x(0))* x(1)*(1. - x(1)) * x(2)*(1. - x(2)))) + (x(0)*(1. - x(0)) * x(1)*(1. - x(1)) * x(2)*(1. - x(2)) * x(3)*(1. - x(3)));
+        // Just reaction Term
+        //f_out = x(0)*(1. - x(0)) * x(1)*(1. - x(1)) * x(2)*(1. - x(2)) * x(3)*(1. - x(3));
+
     }
     
     return f_out;
