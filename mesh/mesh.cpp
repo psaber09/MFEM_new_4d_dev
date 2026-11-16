@@ -8927,6 +8927,16 @@ const Table & Mesh::ElementToFaceTable() const
    return *el_to_face;
 }
 
+const Table & Mesh::ElementToPlanarTable() const
+{
+   if (el_to_planar == NULL)
+   {
+      mfem_error("Mesh::ElementToPlanarTable()");
+   }
+   return *el_to_planar;
+}
+
+
 const Table & Mesh::ElementToEdgeTable() const
 {
    if (el_to_edge == NULL)

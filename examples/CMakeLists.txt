@@ -66,9 +66,15 @@ if (MFEM_USE_MPI)
   list(APPEND ALL_EXE_SRCS
     ex0p.cpp
     ex1p.cpp
+    ex1p_4d.cpp
+    ex1p_H1.cpp
+    ex1p_L2.cpp
     ex2p.cpp
     ex3p.cpp
+    ex3p_curl.cpp
+    ex3p_SkwGrad.cpp
     ex4p.cpp
+    ex4p_4d.cpp
     ex5p.cpp
     ex6p.cpp
     ex7p.cpp

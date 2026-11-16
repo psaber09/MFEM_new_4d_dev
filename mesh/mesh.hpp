@@ -1423,7 +1423,12 @@ public:
     
    bool getSwappedElementInfo(int i) const { return false; }
    bool getSwappedFaceElementInfo(int i) const { return swappedFaces[i]; }
-   bool getSwappedBdrElementInfo(int i) const { return swappedBdr[i]; }
+   //bool getSwappedBdrElementInfo(int i) const { return swappedBdr[i]; }
+   bool getSwappedBdrElementInfo(int i) const
+   {
+       return swappedBdr.Size() > 0 ? swappedBdr[i] : false;
+   }
+
 
    /// @brief Return pointer to the i'th element object
    ///
@@ -1764,7 +1769,7 @@ public:
 
    const Table &ElementToFaceTable() const;
     
-   const Table &ElementToPlanTable() const;
+   const Table &ElementToPlanarTable() const;
 
    const Table &ElementToEdgeTable() const;
 

@@ -367,6 +367,9 @@ protected:
 public:
    // Return the 2x2 transformation operator for the given face orientation
    static const DenseMatrix & GetFaceTransform(int ori) { return T(ori); }
+    
+   // Return the 3x3 transformation operator for the given facet orientation
+   static const DenseMatrix & GetFacetTransform(int ori) { return T4D(ori); }
 
    // Return the 2x2 inverse transformation operator
    static const DenseMatrix & GetFaceInverseTransform(int ori)
@@ -487,6 +490,9 @@ public:
     
     // Return the 2x2 transformation operator for the given face orientation
     static const DenseMatrix & GetFaceTransform(int ori) { return T(ori); }
+    
+    // Return the 3x3 transformation operator for the given facet orientation
+    static const DenseMatrix & GetFacetTransform(int ori) { return T4D(ori); }
 
     // Return the 2x2 inverse transformation operator
     static const DenseMatrix & GetFaceInverseTransform(int ori)

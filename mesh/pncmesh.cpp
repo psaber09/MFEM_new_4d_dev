@@ -662,9 +662,9 @@ void ParNCMesh::CalcFaceOrientations()
 
 void ParNCMesh::GetBoundaryClosure(const Array<int> &bdr_attr_is_ess,
                                    Array<int> &bdr_vertices,
-                                   Array<int> &bdr_edges, Array<int> &bdr_faces)
+                                   Array<int> &bdr_edges, Array<int> &bdr_planars, Array<int> &bdr_faces)
 {
-   NCMesh::GetBoundaryClosure(bdr_attr_is_ess, bdr_vertices, bdr_edges, bdr_faces);
+   NCMesh::GetBoundaryClosure(bdr_attr_is_ess, bdr_vertices, bdr_edges, bdr_planars, bdr_faces);
 
    if (Dim == 3)
    {

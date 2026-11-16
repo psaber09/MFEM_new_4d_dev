@@ -553,13 +553,13 @@ void H1_TriangleElement::CalcShape(const IntegrationPoint &ip,
 
    Ti.Mult(u, shape);
     
-        for (int i =0; i<dof; i++) {
-            //for (int j = 0; j<dim; j++) {
-                std::cout << shape(i) << ",";
-            //}
-            std::cout << std::endl;
-        }
-    std::cout << "end" << std::endl;
+//        for (int i =0; i<dof; i++) {
+//            //for (int j = 0; j<dim; j++) {
+//                std::cout << shape(i) << ",";
+//            //}
+//            std::cout << std::endl;
+//        }
+//    std::cout << "end" << std::endl;
 }
 
 void H1_TriangleElement::CalcDShape(const IntegrationPoint &ip,
@@ -789,13 +789,13 @@ void H1_TetrahedronElement::CalcShape(const IntegrationPoint &ip,
 
    Ti.Mult(u, shape);
     
-        for (int i =0; i<dof; i++) {
-            //for (int j = 0; j<dim; j++) {
-                std::cout << shape(i) << ",";
-            //}
-            std::cout << std::endl;
-        }
-    std::cout << "end" << std::endl;
+//        for (int i =0; i<dof; i++) {
+//            //for (int j = 0; j<dim; j++) {
+//                std::cout << shape(i) << ",";
+//            //}
+//            std::cout << std::endl;
+//        }
+//    std::cout << "end" << std::endl;
 }
 
 void H1_TetrahedronElement::CalcDShape(const IntegrationPoint &ip,

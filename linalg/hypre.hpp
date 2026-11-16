@@ -1073,6 +1073,9 @@ protected:
    real_t poly_fraction;
    /// Apply the polynomial smoother to A or D^{-1/2} A D^{-1/2}
    int poly_scale;
+    
+   /// Number of CG iterations to determine eigenvalue estimates, 0 means the max norm
+   int poly_iter;
 
    /// Taubin's lambda-mu method parameters
    real_t lambda;

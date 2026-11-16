@@ -65,6 +65,22 @@ protected:
       void Set(const int *w)
       { v[0] = w[0]; v[1] = w[1]; v[2] = w[2]; v[3] = w[3]; }
    };
+    
+    struct Vert4_tag
+       {
+          int v[4];
+          char tag;
+
+          Vert4_tag() = default;
+          Vert4_tag(int v0, int v1, int v2, int v3, char _tag = 0)
+          {
+              v[0] = v0; v[1] = v1; v[2] = v2; v[3] = v3; tag = _tag;
+          }
+          void Set(int v0, int v1, int v2, int v3,  char _tag = 0)
+          { v[0] = v0; v[1] = v1; v[2] = v2; v[3] = v3; tag = _tag; }
+          void Set(const int *w, char _tag = 0)
+          { v[0] = w[0]; v[1] = w[1]; v[2] = w[2]; v[3] = w[3]; tag = _tag; }
+        };
 
    Array<Element *> shared_edges;
    // shared face id 'i' is:
@@ -72,17 +88,25 @@ protected:
    //   * quad id 'i-shared_trias.Size()',  otherwise
    Array<Vert3> shared_trias;
    Array<Vert4> shared_quads;
+   Array<Vert4_tag> shared_tetra;
+   Array<Vert4_tag> shared_tetra_ref;
 
    /// Shared objects in each group.
    Table group_svert;
    Table group_sedge;
    Table group_stria;  // contains shared triangle indices
    Table group_squad;  // contains shared quadrilateral indices
+   Table group_stetr;
+   // Table group_splan;
 
    /// Shared to local index mapping.
    Array<int> svert_lvert;
    Array<int> sedge_ledge;
+   Array<int> splan_lplan;
+   Array<int> splan_nbr_ori;
+   Array<int> stet_master_ori;
    // sface ids: all triangles first, then all quads
+   // in 4D, just all tetrahedra
    Array<int> sface_lface;
 
    /// Table that maps from face neighbor element number, to the face numbers of
@@ -121,6 +145,19 @@ protected:
 
    bool DecodeFaceSplittings(HashTable<Hashed2> &v_to_v, const int *v,
                              const Array<unsigned> &codes, int &pos);
+    
+   void GetFaceSplittings4D(const Vert4_tag &f, const HashTable<Hashed2> &v_to_v,
+                             const DSTable &edges, Array<unsigned> &codes);
+
+   bool DecodeFaceSplittings4D(HashTable<Hashed2> &v_to_v, const Vert4_tag &v,
+                                const Array<unsigned> &codes, int &pos);
+
+   void GetFaceSplittings4D_old(const Vert4_tag &f, const HashTable<Hashed2> &v_to_v,
+                                Array<unsigned> &codes);
+
+   bool DecodeFaceSplittings4D_old(HashTable<Hashed2> &v_to_v, const Vert4_tag &v,
+                                    const Array<unsigned> &codes, int &pos);
+
 
    // Given a completed FacesTable and SharedFacesTable, construct a table that
    // maps from face neighbor element number, to the set of faces of that
@@ -165,6 +202,9 @@ protected:
 
    /// Update the groups after tetrahedron refinement
    void RefineGroups(int old_nv, const HashTable<Hashed2> &v_to_v);
+    
+   void RefineGroups4D(int old_nv, const HashTable<Hashed2> &v_to_v);
+   void UniformRefineGroups4D_Freudenthal(int old_nv, const HashTable<Hashed2> &v_to_v);
 
    void UniformRefineGroups2D(int old_nv);
 
@@ -225,6 +265,9 @@ protected:
    void FindSharedFaces(const Mesh &mesh, const int* partition,
                         Array<int>& face_group,
                         ListOfIntegerSets& groups);
+    
+   int FindSharedPlanars(const Mesh &mesh, const int* partition,
+                         Table* &plan_element, ListOfIntegerSets &groups);
 
    int FindSharedEdges(const Mesh &mesh, const int* partition,
                        Table* &edge_element, ListOfIntegerSets& groups);
@@ -235,6 +278,14 @@ protected:
    void BuildFaceGroup(int ngroups, const Mesh &mesh,
                        const Array<int>& face_group,
                        int &nstria, int &nsquad);
+    
+   void BuildFaceGroup4D(int ngroups, const Mesh &mesh,
+                         const Array<int>& face_group,
+                         int &nstetr, int &nshexa);
+
+   void BuildPlanarGroup(int ngroups, const Mesh &mesh,const Table& plan_element,
+                          int &nstria, int &nsquad);
+
 
    void BuildEdgeGroup(int ngroups, const Table& edge_element);
 
@@ -245,6 +296,17 @@ protected:
                              const STable3D *faces_tbl,
                              const Array<int> &face_group,
                              const Array<int> &vert_global_local);
+    
+   void BuildSharedFaceElems4D(int ntet_faces, int nhex_faces,
+                               const Mesh &mesh, int *partitioning,
+                               const STable4D *faces_tbl_4d,
+                               const Array<int> &face_group,
+                               const Array<int> &vert_global_local,
+                               const std::map<int,char> &vert_to_type);
+
+   void BuildSharedPlanarElems(int ntri_planars, int nquad_planars,
+                               const Mesh &mesh, const Array<int>& vert_global_local,
+                               const STable3D *planar_tbl, const Table* plan_element);
 
    void BuildSharedEdgeElems(int nedges, Mesh &mesh,
                              const Array<int> &vert_global_local,
@@ -475,6 +537,8 @@ public:
    int GroupNEdges(int group) const { return group_sedge.RowSize(group-1); }
    int GroupNTriangles(int group) const { return group_stria.RowSize(group-1); }
    int GroupNQuadrilaterals(int group) const { return group_squad.RowSize(group-1); }
+   // int GroupNPlanars(int group) const { return group_splan.RowSize(group-1); }
+   int GroupNTetrahedra(int group) const { return group_stetr.RowSize(group-1); }
 
    /**
     * @brief Accessors for entities within a shared group structure.
@@ -491,7 +555,18 @@ public:
    { return svert_lvert[group_svert.GetRow(group-1)[i]]; }
    void GroupEdge(int group, int i, int &edge, int &o) const;
    void GroupTriangle(int group, int i, int &face, int &o) const;
+    
+   void ExchangeSharedPlanarOrientations();   // 4D only, collective
+   int GroupTriangleMasterOri(int group, int i) const
+   { return splan_nbr_ori[group_stria.GetRow(group-1)[i]]; }
+    
    void GroupQuadrilateral(int group, int i, int &face, int &o) const;
+   void GroupTetrahedron(int group, int i, int &face, int &o) const;
+    
+    void ExchangeSharedTetOrientations();
+    int GroupTetrahedronMasterOri(int group, int i) const
+    { return stet_master_ori[group_stetr.GetRow(group-1)[i]]; }
+    
    int GroupEdge(int group, int i) const
    {
       int e, o;

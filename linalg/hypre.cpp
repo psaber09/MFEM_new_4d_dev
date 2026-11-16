@@ -3567,6 +3567,7 @@ HypreSmoother::HypreSmoother() : Solver()
    omega = 1.0;
    poly_order = 2;
    poly_fraction = .3;
+   poly_iter = 10;
    lambda = 0.5;
    mu = -0.5;
    taubin_iter = 40;

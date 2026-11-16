@@ -260,11 +260,12 @@ void ParFiniteElementSpace::Construct()
                       * fec->DofForGeometry(Geometry::Type::SQUARE);
          }
       }
+      ngpdofs = 0;
 
       // Total number of ghost DOFs. Ghost DOFs start at index 'ndofs', i.e.,
       // after all regular DOFs. Ghost element internal ("bubble") DOFs are not
       // included.
-      ngdofs = ngvdofs + ngedofs + ngfdofs;
+      ngdofs = ngvdofs + ngedofs + ngfdofs + ngpdofs;
 
       if (IsVariableOrder())
       {
@@ -328,7 +329,10 @@ void ParFiniteElementSpace::GetGroupComm(
    int gr;
    int ng = pmesh->GetNGroups();
    int nvd, ned, ntd = 0, nqd = 0;
+   int nted = 0;
    Array<int> dofs;
+    
+   int dim = pmesh->Dimension();
 
    int group_ldof_counter;
    Table &group_ldof = gc.GroupLDofTable();
@@ -346,6 +350,10 @@ void ParFiniteElementSpace::GetGroupComm(
       {
          nqd = fec->DofForGeometry(Geometry::SQUARE);
       }
+      if (mesh->HasGeometry(Geometry::TETRAHEDRON) && dim > 3)
+        {
+            nted = fec->DofForGeometry(Geometry::TETRAHEDRON);
+        }
    }
 
    if (g_ldof_sign)
@@ -362,6 +370,10 @@ void ParFiniteElementSpace::GetGroupComm(
       group_ldof_counter += ned * pmesh->GroupNEdges(gr);
       group_ldof_counter += ntd * pmesh->GroupNTriangles(gr);
       group_ldof_counter += nqd * pmesh->GroupNQuadrilaterals(gr);
+      if (dim > 3)
+      {
+          group_ldof_counter += nted * pmesh->GroupNTetrahedra(gr);   // FIXME: ensure that tet-group is always build
+      }
    }
    if (ldof_type)
    {
@@ -375,13 +387,14 @@ void ParFiniteElementSpace::GetGroupComm(
    group_ldof.GetI()[0] = group_ldof.GetI()[1] = 0;
    for (gr = 1; gr < ng; gr++)
    {
-      int j, k, l, m, o, nv, ne, nt, nq;
+      int j, k, l, m, o, nv, ne, nt, nq, nte;
       const int *ind;
 
       nv = pmesh->GroupNVertices(gr);
       ne = pmesh->GroupNEdges(gr);
       nt = pmesh->GroupNTriangles(gr);
       nq = pmesh->GroupNQuadrilaterals(gr);
+      nte = (dim>3) ? pmesh->GroupNTetrahedra(gr) : 0;   // FIXME
 
       // vertices
       if (nvd > 0)
@@ -455,7 +468,15 @@ void ParFiniteElementSpace::GetGroupComm(
             pmesh->GroupTriangle(gr, j, k, o);
 
             dofs.SetSize(ntd);
-            m = nvdofs + nedofs + FirstFaceDof(k);
+            if (dim == 4)
+            {
+                m = nvdofs+nedofs+pdofs[k];
+            }
+            else
+            {
+                m = nvdofs + nedofs + FirstFaceDof(k);
+            }
+            //m = nvdofs + nedofs + FirstFaceDof(k);
             ind = fec->DofOrderForOrientation(Geometry::TRIANGLE, o);
             for (l = 0; l < ntd; l++)
             {
@@ -522,7 +543,46 @@ void ParFiniteElementSpace::GetGroupComm(
             }
          }
       }
+       
+       // tetrahedra (4D)
+             if (nted > 0)
+             {
+                for (j = 0; j < nte; j++)
+                {
+                   pmesh->GroupTetrahedron(gr, j, k, o);
 
+                   dofs.SetSize(nted);
+                   m = nvdofs+nedofs+npdofs+ FirstFaceDof(k);
+                   ind = fec->DofOrderForOrientation(
+                            mesh->GetFaceGeometry(k), o);
+                   for (l = 0; l < nted; l++)
+                   {
+                      if (ind[l] < 0)
+                      {
+                         dofs[l] = m + (-1-ind[l]);
+                         if (g_ldof_sign)
+                         {
+                            (*g_ldof_sign)[dofs[l]] = -1;
+                         }
+                      }
+                      else
+                      {
+                         dofs[l] = m + ind[l];
+                      }
+                   }
+
+                   if (ldof_type)
+                   {
+                      DofsToVDofs(dofs);
+                   }
+
+                   for (l = 0; l < dofs.Size(); l++)
+                   {
+                      group_ldof.GetJ()[group_ldof_counter++] = dofs[l];
+                   }
+                }
+             }
+       
       group_ldof.GetI()[gr+1] = group_ldof_counter;
    }
 
@@ -561,6 +621,7 @@ void ParFiniteElementSpace::ApplyLDofSigns(Table &el_dof) const
 void ParFiniteElementSpace::GetElementDofs(int i, Array<int> &dofs,
                                            DofTransformation &doftrans) const
 {
+   const int dim = mesh->Dimension();
    if (elem_dof)
    {
       elem_dof->GetRow(i, dofs);
@@ -568,10 +629,23 @@ void ParFiniteElementSpace::GetElementDofs(int i, Array<int> &dofs,
       if (DoFTransArray[mesh->GetElementBaseGeometry(i)])
       {
          Array<int> Fo;
+         Array<int> Po;
+         if (dim > 3)
+         {
+             elem_pos->GetRow(i,Po);
+         }
          elem_fos->GetRow(i, Fo);
          doftrans.SetDofTransformation(
             *DoFTransArray[mesh->GetElementBaseGeometry(i)]);
-         doftrans.SetFaceOrientations(Fo);
+         if (dim == 4)
+         {
+             doftrans.SetPlanarOrientations(Po);
+             doftrans.SetFaceOrientations(Fo);
+         }
+         else
+         {
+             doftrans.SetFaceOrientations(Fo);
+         }
          doftrans.SetVDim();
       }
       return;
@@ -586,6 +660,9 @@ void ParFiniteElementSpace::GetElementDofs(int i, Array<int> &dofs,
 void ParFiniteElementSpace::GetBdrElementDofs(int i, Array<int> &dofs,
                                               DofTransformation &doftrans) const
 {
+   const int dim = mesh->Dimension();
+   doftrans.SetDofTransformation(nullptr);
+
    if (bdr_elem_dof)
    {
       bdr_elem_dof->GetRow(i, dofs);
@@ -593,10 +670,23 @@ void ParFiniteElementSpace::GetBdrElementDofs(int i, Array<int> &dofs,
       if (DoFTransArray[mesh->GetBdrElementGeometry(i)])
       {
          Array<int> Fo;
+         Array<int> Po;
+         if (dim > 3)
+         {
+             bdr_elem_fos->GetRow(i, Po);
+         }
          bdr_elem_fos->GetRow(i, Fo);
          doftrans.SetDofTransformation(
             *DoFTransArray[mesh->GetBdrElementGeometry(i)]);
-         doftrans.SetFaceOrientations(Fo);
+         if (dim ==4)
+         {
+             doftrans.SetPlanarOrientations(Po);
+             doftrans.SetFaceOrientations(Fo);
+         }
+         else
+         {
+             doftrans.SetFaceOrientations(Fo);
+         }
          doftrans.SetVDim();
       }
       return;
@@ -622,6 +712,15 @@ int ParFiniteElementSpace::GetFaceDofs(int i, Array<int> &dofs,
       ApplyLDofSigns(dofs);
    }
    return p;
+}
+
+void ParFiniteElementSpace::GetPlanarDofs(int i, Array<int> &dofs) const
+{
+   FiniteElementSpace::GetPlanarDofs(i, dofs);
+   if (Conforming())
+   {
+      ApplyLDofSigns(dofs);
+   }
 }
 
 const FiniteElement *ParFiniteElementSpace::GetFE(int i) const
@@ -707,15 +806,33 @@ void ParFiniteElementSpace::GetSharedTriangleDofs(
    MFEM_ASSERT(0 <= fi && fi < pmesh->GroupNTriangles(group),
                "invalid triangular face index");
    pmesh->GroupTriangle(group, fi, l_face, ori);
+   int dim = pmesh->Mesh::Dimension();
+    
    if (ori == 0)
    {
-      GetFaceDofs(l_face, dofs);
+      if (dim > 3)
+      {
+          GetPlanarDofs(l_face, dofs);
+      }
+      else
+      {
+          GetFaceDofs(l_face, dofs);
+      }
+
    }
    else
    {
       Array<int> rdofs;
       fec->SubDofOrder(Geometry::TRIANGLE, 2, ori, dofs);
-      GetFaceDofs(l_face, rdofs);
+      if (dim > 3)
+      {
+          GetPlanarDofs(l_face, rdofs);
+      }
+      else
+      {
+          GetFaceDofs(l_face, rdofs);
+      }
+
       for (int i = 0; i < dofs.Size(); i++)
       {
          const int di = dofs[i];
@@ -739,6 +856,30 @@ void ParFiniteElementSpace::GetSharedQuadrilateralDofs(
    {
       Array<int> rdofs;
       fec->SubDofOrder(Geometry::SQUARE, 2, ori, dofs);
+      GetFaceDofs(l_face, rdofs);
+      for (int i = 0; i < dofs.Size(); i++)
+      {
+         const int di = dofs[i];
+         dofs[i] = (di >= 0) ? rdofs[di] : -1-rdofs[-1-di];
+      }
+   }
+}
+
+void ParFiniteElementSpace::GetSharedTetrahedronDofs(
+   int group, int fi, Array<int> &dofs) const
+{
+   int l_face, ori;
+   MFEM_ASSERT(0 <= fi &&
+               fi < pmesh->GroupNTetrahedra(group), "invalid face index");
+   pmesh->GroupTetrahedron(group, fi, l_face, ori);
+   if (ori == 0)
+   {
+      GetFaceDofs(l_face, dofs);
+   }
+   else
+   {
+      Array<int> rdofs;
+      fec->SubDofOrder(pmesh->GetFaceGeometry(l_face), 2, ori, dofs);
       GetFaceDofs(l_face, rdofs);
       for (int i = 0; i < dofs.Size(); i++)
       {
@@ -791,42 +932,442 @@ void ParFiniteElementSpace::GenerateGlobalOffsets() const
    }
 }
 
+//void ParFiniteElementSpace::CheckNDSTriaDofs()
+//{
+//   // Check for Nedelec basis
+//   bool nd_basis = dynamic_cast<const ND_FECollection*>(fec);
+//   bool SkwGrad_basis = dynamic_cast<const SkwGrad_FECollection*>(fec);
+//   if ((!nd_basis)&&(!SkwGrad_basis))
+//   {
+//      nd_strias = false;
+//      return;
+//   }
+//
+//   // Check for interior face dofs on triangles (the use of TETRAHEDRON
+//   // is not an error)
+//   const int dim = pmesh->Dimension();
+//   bool nd_fdof;
+//   //bool nd_ftdof;
+//   if (dim > 3)
+//   {
+//       nd_fdof = fec->HasPlanarDofs(Geometry::PENTATOPE);
+//       //nd_ftdof = fec->HasFaceDofs(Geometry::PENTATOPE,GetMaxElementOrder());
+//   }
+//   else
+//   {
+//       nd_fdof = fec->HasFaceDofs(Geometry::TETRAHEDRON,GetMaxElementOrder());
+//   }
+//    
+//   if (!nd_fdof)
+//   {
+//      nd_strias = false;
+//      return;
+//   }
+//
+//   // Check for shared triangle faces
+//   bool strias = false;
+//   {
+//      int ngrps = pmesh->GetNGroups();
+//      for (int g = 1; g < ngrps; g++)
+//      {
+//         strias |= pmesh->GroupNTriangles(g);
+//      }
+//   }
+//
+//   // Combine results
+//   int loc_nd_strias = strias ? 1 : 0;
+//   int glb_nd_strias = 0;
+//   MPI_Allreduce(&loc_nd_strias, &glb_nd_strias, 1, MPI_INT, MPI_SUM, MyComm);
+//   nd_strias = glb_nd_strias > 0;
+//}
+
 void ParFiniteElementSpace::CheckNDSTriaDofs()
 {
-   // Check for Nedelec basis
-   bool nd_basis = dynamic_cast<const ND_FECollection*>(fec);
-   if (!nd_basis)
+   nd_strias = false;
+   nd_stets  = false;
+
+   const bool hcurl_basis   = dynamic_cast<const HCurl_FECollection*>(fec);
+   const bool nd_basis      = dynamic_cast<const ND_FECollection*>(fec);
+   const bool skwgrad_basis = dynamic_cast<const SkwGrad_FECollection*>(fec);
+   if (!nd_basis && !skwgrad_basis && !hcurl_basis) { return; }
+
+   const int dim = pmesh->Dimension();
+   bool tri_blocks = false;   // triangle interior dofs need matrices
+   bool tet_blocks = false;   // tet interior dofs need matrices
+   if (dim > 3)
    {
-      nd_strias = false;
-      return;
+      // HCurl triangle dofs only flip sign, so they are plain copies.
+      tri_blocks = (nd_basis || skwgrad_basis) && !hcurl_basis &&
+                   fec->HasPlanarDofs(Geometry::PENTATOPE);
+      tet_blocks = (skwgrad_basis || hcurl_basis) &&
+                   fec->DofForGeometry(Geometry::TETRAHEDRON) > 0;
+   }
+   else
+   {
+      tri_blocks = fec->HasFaceDofs(Geometry::TETRAHEDRON, GetMaxElementOrder());
+   }
+   if (!tri_blocks && !tet_blocks) { return; }
+
+   bool strias = false, stets = false;
+   const int ngrps = pmesh->GetNGroups();
+   for (int g = 1; g < ngrps; g++)
+   {
+      if (tri_blocks) { strias |= pmesh->GroupNTriangles(g) > 0; }
+      if (tet_blocks) { stets  |= pmesh->GroupNTetrahedra(g) > 0; }
    }
 
-   // Check for interior face dofs on triangles (the use of TETRAHEDRON
-   // is not an error)
-   bool nd_fdof = fec->HasFaceDofs(Geometry::TETRAHEDRON,
-                                   GetMaxElementOrder());
-   if (!nd_fdof)
-   {
-      nd_strias = false;
-      return;
-   }
-
-   // Check for shared triangle faces
-   bool strias = false;
-   {
-      int ngrps = pmesh->GetNGroups();
-      for (int g = 1; g < ngrps; g++)
-      {
-         strias |= pmesh->GroupNTriangles(g);
-      }
-   }
-
-   // Combine results
-   int loc_nd_strias = strias ? 1 : 0;
-   int glb_nd_strias = 0;
-   MPI_Allreduce(&loc_nd_strias, &glb_nd_strias, 1, MPI_INT, MPI_SUM, MyComm);
-   nd_strias = glb_nd_strias > 0;
+   int loc[2] = { strias ? 1 : 0, stets ? 1 : 0 };
+   int glb[2] = { 0, 0 };
+   MPI_Allreduce(loc, glb, 2, MPI_INT, MPI_SUM, MyComm);
+   nd_strias = glb[0] > 0;
+   nd_stets  = glb[1] > 0;
 }
+
+//void ParFiniteElementSpace::Build_Dof_TrueDof_Matrix() const // matrix P
+//{
+//   MFEM_ASSERT(Conforming(), "wrong code path");
+//
+//   if (P) { return; }
+//
+//   if (!nd_strias)
+//   {
+//      // Safe to assume 1-1 correspondence between shared dofs
+//      int ldof  = GetVSize();
+//      int ltdof = TrueVSize();
+//
+//      HYPRE_Int *i_diag = Memory<HYPRE_Int>(ldof+1);
+//      HYPRE_Int *j_diag = Memory<HYPRE_Int>(ltdof);
+//      int diag_counter;
+//
+//      HYPRE_Int *i_offd = Memory<HYPRE_Int>(ldof+1);
+//      HYPRE_Int *j_offd = Memory<HYPRE_Int>(ldof-ltdof);
+//      int offd_counter;
+//
+//      HYPRE_BigInt *cmap   = Memory<HYPRE_BigInt>(ldof-ltdof);
+//
+//      HYPRE_BigInt *col_starts = GetTrueDofOffsets();
+//      HYPRE_BigInt *row_starts = GetDofOffsets();
+//
+//      Array<Pair<HYPRE_BigInt, int> > cmap_j_offd(ldof-ltdof);
+//
+//      i_diag[0] = i_offd[0] = 0;
+//      diag_counter = offd_counter = 0;
+//      for (int i = 0; i < ldof; i++)
+//      {
+//         int ltdof_i = GetLocalTDofNumber(i);
+//         if (ltdof_i >= 0)
+//         {
+//            j_diag[diag_counter++] = ltdof_i;
+//         }
+//         else
+//         {
+//            cmap_j_offd[offd_counter].one = GetGlobalTDofNumber(i);
+//            cmap_j_offd[offd_counter].two = offd_counter;
+//            offd_counter++;
+//         }
+//         i_diag[i+1] = diag_counter;
+//         i_offd[i+1] = offd_counter;
+//      }
+//
+//      SortPairs<HYPRE_BigInt, int>(cmap_j_offd, offd_counter);
+//
+//      for (int i = 0; i < offd_counter; i++)
+//      {
+//         cmap[i] = cmap_j_offd[i].one;
+//         j_offd[cmap_j_offd[i].two] = i;
+//      }
+//
+//      P = new HypreParMatrix(MyComm, MyRank, NRanks, row_starts, col_starts,
+//                             i_diag, j_diag, i_offd, j_offd,
+//                             cmap, offd_counter);
+//   }
+//   else
+//   {
+//      // Some shared dofs will be linear combinations of others
+//      HYPRE_BigInt ldof  = GetVSize();
+//      HYPRE_BigInt ltdof = TrueVSize();
+//
+//      HYPRE_BigInt gdof  = -1;
+//      HYPRE_BigInt gtdof = -1;
+//
+//      MPI_Allreduce(&ldof, &gdof, 1, HYPRE_MPI_BIG_INT, MPI_SUM, MyComm);
+//      MPI_Allreduce(&ltdof, &gtdof, 1, HYPRE_MPI_BIG_INT, MPI_SUM, MyComm);
+//
+//      // Ensure face orientations have been communicated
+//      const int nte = (pmesh->Dimension() > 3) ? fec->DofForGeometry(Geometry::TETRAHEDRON) : 0;
+//      //pmesh->ExchangeFaceNbrData();
+//      if (pmesh->Dimension() == 4)
+//      {
+//          pmesh->ExchangeSharedPlanarOrientations();
+//          if (nte > 0)
+//          {
+//              pmesh->ExchangeSharedTetOrientations();
+//          }
+//
+//      }
+//      else
+//      {
+//          pmesh->ExchangeFaceNbrData();
+//      }
+//
+//      // Locate and count non-zeros in off-diagonal portion of P
+//      int nnz_offd = 0;
+//      Array<int> ldsize(ldof); ldsize = 0;
+//      Array<int> ltori(ldof);  ltori = 0; // Local triangle orientations
+//      {
+//         int ngrps = pmesh->GetNGroups();
+//         int nedofs = fec->DofForGeometry(Geometry::SEGMENT);
+//         Array<int> sdofs;
+//         for (int g = 1; g < ngrps; g++)
+//         {
+//            if (pmesh->gtopo.IAmMaster(g))
+//            {
+//               continue;
+//            }
+//            for (int ei=0; ei<pmesh->GroupNEdges(g); ei++)
+//            {
+//               this->GetSharedEdgeDofs(g, ei, sdofs);
+//               for (int i=0; i<sdofs.Size(); i++)
+//               {
+//                  int ind = (sdofs[i]>=0) ? sdofs[i] : (-sdofs[i]-1);
+//                  if (ldsize[ind] == 0) { nnz_offd++; }
+//                  ldsize[ind] = 1;
+//               }
+//            }
+//            for (int fi=0; fi<pmesh->GroupNTriangles(g); fi++)
+//            {
+//               //int face, ori, info1, info2;
+//               int face, ori, info2;
+//               pmesh->GroupTriangle(g, fi, face, ori);
+//                if (pmesh->Dimension() == 4)
+//                {
+//                   info2 = pmesh->GroupTriangleMasterOri(g, fi);
+//                }
+//                else
+//                {
+//                   int info1;
+//                   pmesh->GetFaceInfos(face, &info1, &info2);
+//                   info2 %= 64;
+//                }
+//               //pmesh->GetFaceInfos(face, &info1, &info2);
+//               this->GetSharedTriangleDofs(g, fi, sdofs);
+//               for (int i=0; i<3*nedofs; i++)
+//               {
+//                  int ind = (sdofs[i]>=0) ? sdofs[i] : (-sdofs[i]-1);
+//                  if (ldsize[ind] == 0) { nnz_offd++; }
+//                  ldsize[ind] = 1;
+//               }
+//               for (int i=3*nedofs; i<sdofs.Size(); i++)
+//               {
+//                  if (ldsize[sdofs[i]] == 0) { nnz_offd += 2; }
+//                  ldsize[sdofs[i]] = 2;
+//                  //ltori[sdofs[i]]  = info2 % 64;
+//                  ltori[sdofs[i]]  = info2;
+//
+//               }
+//            }
+//            for (int fi=0; fi<pmesh->GroupNQuadrilaterals(g); fi++)
+//            {
+//               this->GetSharedQuadrilateralDofs(g, fi, sdofs);
+//               for (int i=0; i<sdofs.Size(); i++)
+//               {
+//                  int ind = (sdofs[i]>=0) ? sdofs[i] : (-sdofs[i]-1);
+//                  if (ldsize[ind] == 0) { nnz_offd++; }
+//                  ldsize[ind] = 1;
+//               }
+//            }
+////            if (nte > 0)
+////            {
+////               Array<int> fdofs;
+////               for (int fi = 0; fi < pmesh->GroupNTetrahedra(g); fi++)
+////               {
+////                   int l_face, ori;
+////                   pmesh->GroupTetrahedron(g, fi, l_face, ori);
+////                   const int tori = pmesh->GroupTetrahedronMasterOri(g, fi);
+////                   GetFaceDofs(l_face, fdofs);   // 4D: vertex, edge, planar, then interior
+////                   for (int i = 0; i < nte; i++)
+////                   {
+////                      const int d = fdofs[fdofs.Size() - nte + i];
+////                      const int ind = (d >= 0) ? d : -1 - d;
+////                      if (ldsize[ind] == 0) { nnz_offd += nte; }
+////                      ldsize[ind] = nte;
+////                      ltori[ind]  = tori;
+////                   }
+////               }
+////            }
+//             
+//             if (nte > 0)
+//             {
+//                // Size of one tet transformation block (3 for your matrices).
+//                // Use the name of your function here.
+//                const int tb = ND_PentDofTransformation::GetFacetTransform(0).Height();
+//                MFEM_VERIFY(nte % tb == 0,
+//                            "tet interior dofs are not a multiple of the transformation size");
+//
+//                Array<int> fdofs;
+//                for (int fi = 0; fi < pmesh->GroupNTetrahedra(g); fi++)
+//                {
+//                   int l_face, ori;
+//                   pmesh->GroupTetrahedron(g, fi, l_face, ori);
+//                   const int tori = pmesh->GroupTetrahedronMasterOri(g, fi);
+//                   GetFaceDofs(l_face, fdofs);   // 4D: vertex, edge, planar, then interior
+//                   for (int i = 0; i < nte; i++)
+//                   {
+//                      const int d = fdofs[fdofs.Size() - nte + i];
+//                      const int ind = (d >= 0) ? d : -1 - d;
+//                      if (ldsize[ind] == 0) { nnz_offd += tb; }   // was: nte
+//                      ldsize[ind] = tb;                           // was: nte
+//                      ltori[ind]  = tori;
+//                   }
+//                }
+//             }
+//         }
+//      }
+//
+//      HYPRE_Int *i_diag = Memory<HYPRE_Int>(ldof+1);
+//      HYPRE_Int *j_diag = Memory<HYPRE_Int>(ltdof);
+//      real_t    *d_diag = Memory<real_t>(ltdof);
+//      int diag_counter;
+//
+//      HYPRE_Int *i_offd = Memory<HYPRE_Int>(ldof+1);
+//      HYPRE_Int *j_offd = Memory<HYPRE_Int>(nnz_offd);
+//      real_t    *d_offd = Memory<real_t>(nnz_offd);
+//      int offd_counter;
+//
+//      HYPRE_BigInt *cmap   = Memory<HYPRE_BigInt>(ldof-ltdof);
+//
+//      HYPRE_BigInt *col_starts = GetTrueDofOffsets();
+//      HYPRE_BigInt *row_starts = GetDofOffsets();
+//
+//      Array<Pair<HYPRE_BigInt, int> > cmap_j_offd(ldof-ltdof);
+//
+//      i_diag[0] = i_offd[0] = 0;
+//      diag_counter = offd_counter = 0;
+//      int offd_col_counter = 0;
+//      for (int i = 0; i < ldof; i++)
+//      {
+//          int ltdofi = GetLocalTDofNumber(i);
+//          if (ltdofi >= 0)
+//          {
+//             j_diag[diag_counter]   = ltdofi;
+//             d_diag[diag_counter++] = 1.0;
+//          }
+//          else
+//          {
+//             // b = number of entries in this row of P_offd: 1 (plain copy),
+//             // 2 (triangle interior pair), 3 (tet interior block)
+//             const int b = (ldsize[i] > 1) ? ldsize[i] : 1;
+//             for (int m = 0; m < b; m++)
+//             {
+//                const int im = i + m;
+//                MFEM_VERIFY(GetLocalTDofNumber(im) < 0 && ldsize[im] == ldsize[i],
+//                            "inconsistent dof block in Build_Dof_TrueDof_Matrix");
+//                cmap_j_offd[offd_col_counter].one = GetGlobalTDofNumber(im);
+//                cmap_j_offd[offd_col_counter].two = offd_counter;
+//                offd_counter += b;
+//                offd_col_counter++;
+//                if (m < b-1)
+//                {
+//                   i_diag[im+1] = diag_counter;
+//                   i_offd[im+1] = offd_counter;
+//                }
+//             }
+//             i += b-1;
+//          }
+//          i_diag[i+1] = diag_counter;
+//          i_offd[i+1] = offd_counter;
+//      }
+//
+//      SortPairs<HYPRE_BigInt, int>(cmap_j_offd, offd_col_counter);
+//
+//      for (int i = 0; i < nnz_offd; i++)
+//      {
+//         j_offd[i] = -1;
+//         d_offd[i] = 0.0;
+//      }
+//// OLD
+////      for (int i = 0; i < offd_col_counter; i++)
+////      {
+////         cmap[i] = cmap_j_offd[i].one;
+////         j_offd[cmap_j_offd[i].two] = i;
+////      }
+////
+////      for (int i = 0; i < ldof; i++)
+////      {
+////         if (i_offd[i+1] == i_offd[i] + 1)
+////         {
+////            d_offd[i_offd[i]] = 1.0;
+////         }
+////         else if (i_offd[i+1] == i_offd[i] + 2)
+////         {
+////            const real_t *T =
+////               ND_DofTransformation::GetFaceTransform(ltori[i]).GetData();
+////            j_offd[i_offd[i] + 1] = j_offd[i_offd[i]] + 1;
+////            d_offd[i_offd[i]] = T[0]; d_offd[i_offd[i] + 1] = T[2];
+////            i++;
+////            j_offd[i_offd[i] + 1] = j_offd[i_offd[i]];
+////            j_offd[i_offd[i]] = j_offd[i_offd[i] + 1] - 1;
+////            d_offd[i_offd[i]] = T[1]; d_offd[i_offd[i] + 1] = T[3];
+////         }
+////      }
+//       
+//       for (int i = 0; i < offd_col_counter; i++)
+//       {
+//          cmap[i] = cmap_j_offd[i].one;
+//          j_offd[cmap_j_offd[i].two] = i;
+//       }
+//
+//       for (int i = 0; i < ldof; i++)
+//       {
+//          if (i_offd[i+1] == i_offd[i] + 1)
+//          {
+//             d_offd[i_offd[i]] = 1.0;
+//          }
+//          else if (i_offd[i+1] > i_offd[i] + 1)
+//          {
+//             // b = size of the dof block: 2 (triangle interior pair) or
+//             //     3 (tet interior block)
+//             const int b = i_offd[i+1] - i_offd[i];
+//
+//             const DenseMatrix &Tm = (b == 2) ?
+//                ND_DofTransformation::GetFaceTransform(ltori[i]) :
+//                ND_PentDofTransformation::GetFacetTransform(ltori[i]);
+//             const real_t *T = Tm.GetData();        // column-major, T(m,l) = T[m + l*b]
+//              
+//              
+//
+//             // The b master true dofs have consecutive global numbers, so they
+//             // are consecutive columns of the sorted cmap. Row i+m currently
+//             // holds its own column in its first slot (set above), and with
+//             // identity alignment that column is c0 + m.
+//             const int c0 = j_offd[i_offd[i]];
+//             for (int m = 0; m < b; m++)
+//             {
+//                MFEM_VERIFY(j_offd[i_offd[i+m]] == c0 + m,
+//                            "block dofs not aligned with the master's dofs");
+//             }
+//
+//             for (int m = 0; m < b; m++)
+//             {
+//                for (int l = 0; l < b; l++)
+//                {
+//                   j_offd[i_offd[i+m] + l] = c0 + l;
+//                   d_offd[i_offd[i+m] + l] = T[m + l*b];
+//                }
+//             }
+//             i += b-1;
+//          }
+//       }
+//
+//      P = new HypreParMatrix(MyComm, gdof, gtdof, row_starts, col_starts,
+//                             i_diag, j_diag, d_diag, i_offd, j_offd, d_offd,
+//                             offd_col_counter, cmap);
+//   }
+//
+//   SparseMatrix Pdiag;
+//   P->GetDiag(Pdiag);
+//   R = Transpose(Pdiag);
+//}
 
 void ParFiniteElementSpace::Build_Dof_TrueDof_Matrix() const // matrix P
 {
@@ -834,7 +1375,7 @@ void ParFiniteElementSpace::Build_Dof_TrueDof_Matrix() const // matrix P
 
    if (P) { return; }
 
-   if (!nd_strias)
+   if (!nd_strias && !nd_stets)
    {
       // Safe to assume 1-1 correspondence between shared dofs
       int ldof  = GetVSize();
@@ -888,7 +1429,16 @@ void ParFiniteElementSpace::Build_Dof_TrueDof_Matrix() const // matrix P
    }
    else
    {
-      // Some shared dofs will be linear combinations of others
+      // Some shared dofs are linear combinations of the master's dofs.
+      //
+      // Every non-owned shared dof gets a row in P_offd with 'ldsize' entries:
+      //    1 : plain copy of the master's dof (edges, quads, and any triangle
+      //        dof that needs no matrix; signs were already applied to the
+      //        element dofs by ApplyLDofSigns)
+      //    2 : interior dofs of a triangle, transformed by a 2x2 matrix
+      //        (only if nd_strias)
+      //    tb: interior dofs of a tetrahedron, transformed by a tb x tb
+      //        matrix (only if nd_stets)
       HYPRE_BigInt ldof  = GetVSize();
       HYPRE_BigInt ltdof = TrueVSize();
 
@@ -898,13 +1448,43 @@ void ParFiniteElementSpace::Build_Dof_TrueDof_Matrix() const // matrix P
       MPI_Allreduce(&ldof, &gdof, 1, HYPRE_MPI_BIG_INT, MPI_SUM, MyComm);
       MPI_Allreduce(&ltdof, &gtdof, 1, HYPRE_MPI_BIG_INT, MPI_SUM, MyComm);
 
-      // Ensure face orientations have been communicated
-      pmesh->ExchangeFaceNbrData();
+      // Ensure the face orientations have been communicated. These calls are
+      // collective; nd_strias and nd_stets are identical on all ranks.
+      if (pmesh->Dimension() == 4)
+      {
+         if (nd_strias) { pmesh->ExchangeSharedPlanarOrientations(); }
+         if (nd_stets)  { pmesh->ExchangeSharedTetOrientations(); }
+      }
+      else
+      {
+         pmesh->ExchangeFaceNbrData();
+      }
+
+      // Matrices for the interior dofs of a tetrahedron (4D only). Use the
+      // function that returns your tet matrices for each space.
+      const bool hcurl_basis = dynamic_cast<const HCurl_FECollection*>(fec);
+      auto TetT = [&](int o) -> const DenseMatrix &
+      {
+         return hcurl_basis ?
+                CURL_PentDofTransformation::GetFacetTransform(o) :
+                ND_PentDofTransformation::GetFacetTransform(o);
+      };
+      const int nte = nd_stets ? fec->DofForGeometry(Geometry::TETRAHEDRON) : 0;
+      const int tb  = nd_stets ? TetT(0).Height() : 0;   // size of one tet block
+      if (nd_stets)
+      {
+         MFEM_VERIFY(nte % tb == 0,
+                     "tet interior dofs are not a multiple of the "
+                     "transformation size");
+         MFEM_VERIFY(!(nd_strias && tb == 2),
+                     "tet and triangle blocks of the same size cannot be "
+                     "told apart");
+      }
 
       // Locate and count non-zeros in off-diagonal portion of P
       int nnz_offd = 0;
-      Array<int> ldsize(ldof); ldsize = 0;
-      Array<int> ltori(ldof);  ltori = 0; // Local triangle orientations
+      Array<int> ldsize(ldof); ldsize = 0;  // entries in this row of P_offd
+      Array<int> ltori(ldof);  ltori = 0;   // master-relative face orientation
       {
          int ngrps = pmesh->GetNGroups();
          int nedofs = fec->DofForGeometry(Geometry::SEGMENT);
@@ -915,43 +1495,89 @@ void ParFiniteElementSpace::Build_Dof_TrueDof_Matrix() const // matrix P
             {
                continue;
             }
-            for (int ei=0; ei<pmesh->GroupNEdges(g); ei++)
+
+            // Edges: plain copies
+            for (int ei = 0; ei < pmesh->GroupNEdges(g); ei++)
             {
                this->GetSharedEdgeDofs(g, ei, sdofs);
-               for (int i=0; i<sdofs.Size(); i++)
+               for (int i = 0; i < sdofs.Size(); i++)
                {
-                  int ind = (sdofs[i]>=0) ? sdofs[i] : (-sdofs[i]-1);
+                  int ind = (sdofs[i] >= 0) ? sdofs[i] : (-sdofs[i]-1);
                   if (ldsize[ind] == 0) { nnz_offd++; }
                   ldsize[ind] = 1;
                }
             }
-            for (int fi=0; fi<pmesh->GroupNTriangles(g); fi++)
+
+            // Triangles. Without triangle blocks (e.g. HCurl) every triangle
+            // dof is a plain copy. With triangle blocks, the edge dofs of the
+            // triangle are plain copies and the interior dofs are 2x2 pairs.
+            for (int fi = 0; fi < pmesh->GroupNTriangles(g); fi++)
             {
-               int face, ori, info1, info2;
-               pmesh->GroupTriangle(g, fi, face, ori);
-               pmesh->GetFaceInfos(face, &info1, &info2);
                this->GetSharedTriangleDofs(g, fi, sdofs);
-               for (int i=0; i<3*nedofs; i++)
+
+               int nplain = sdofs.Size();   // leading entries that are plain copies
+               if (nd_strias)
                {
-                  int ind = (sdofs[i]>=0) ? sdofs[i] : (-sdofs[i]-1);
+                  nplain = 3*nedofs;
+
+                  int face, ori, info2;
+                  pmesh->GroupTriangle(g, fi, face, ori);
+                  if (pmesh->Dimension() == 4)
+                  {
+                     info2 = pmesh->GroupTriangleMasterOri(g, fi);
+                  }
+                  else
+                  {
+                     int info1;
+                     pmesh->GetFaceInfos(face, &info1, &info2);
+                     info2 %= 64;
+                  }
+                  for (int i = 3*nedofs; i < sdofs.Size(); i++)
+                  {
+                     if (ldsize[sdofs[i]] == 0) { nnz_offd += 2; }
+                     ldsize[sdofs[i]] = 2;
+                     ltori[sdofs[i]]  = info2;
+                  }
+               }
+               for (int i = 0; i < nplain; i++)
+               {
+                  int ind = (sdofs[i] >= 0) ? sdofs[i] : (-sdofs[i]-1);
                   if (ldsize[ind] == 0) { nnz_offd++; }
                   ldsize[ind] = 1;
                }
-               for (int i=3*nedofs; i<sdofs.Size(); i++)
-               {
-                  if (ldsize[sdofs[i]] == 0) { nnz_offd += 2; }
-                  ldsize[sdofs[i]] = 2;
-                  ltori[sdofs[i]]  = info2 % 64;
-               }
             }
-            for (int fi=0; fi<pmesh->GroupNQuadrilaterals(g); fi++)
+
+            // Quadrilaterals: plain copies
+            for (int fi = 0; fi < pmesh->GroupNQuadrilaterals(g); fi++)
             {
                this->GetSharedQuadrilateralDofs(g, fi, sdofs);
-               for (int i=0; i<sdofs.Size(); i++)
+               for (int i = 0; i < sdofs.Size(); i++)
                {
-                  int ind = (sdofs[i]>=0) ? sdofs[i] : (-sdofs[i]-1);
+                  int ind = (sdofs[i] >= 0) ? sdofs[i] : (-sdofs[i]-1);
                   if (ldsize[ind] == 0) { nnz_offd++; }
                   ldsize[ind] = 1;
+               }
+            }
+
+            // Tetrahedra (4D): interior dofs form consecutive blocks of tb
+            // dofs, each transformed by a tb x tb matrix.
+            if (nd_stets)
+            {
+               Array<int> fdofs;
+               for (int fi = 0; fi < pmesh->GroupNTetrahedra(g); fi++)
+               {
+                  int l_face, ori;
+                  pmesh->GroupTetrahedron(g, fi, l_face, ori);
+                  const int tori = pmesh->GroupTetrahedronMasterOri(g, fi);
+                  GetFaceDofs(l_face, fdofs);   // 4D: vertex, edge, planar, then interior
+                  for (int i = 0; i < nte; i++)
+                  {
+                     const int d = fdofs[fdofs.Size() - nte + i];
+                     const int ind = (d >= 0) ? d : -1 - d;
+                     if (ldsize[ind] == 0) { nnz_offd += tb; }
+                     ldsize[ind] = tb;
+                     ltori[ind]  = tori;
+                  }
                }
             }
          }
@@ -974,6 +1600,8 @@ void ParFiniteElementSpace::Build_Dof_TrueDof_Matrix() const // matrix P
 
       Array<Pair<HYPRE_BigInt, int> > cmap_j_offd(ldof-ltdof);
 
+      // First pass: row structure. A non-owned dof with ldsize = b starts a
+      // block of b consecutive local dofs; each row of the block has b entries.
       i_diag[0] = i_offd[0] = 0;
       diag_counter = offd_counter = 0;
       int offd_col_counter = 0;
@@ -987,27 +1615,23 @@ void ParFiniteElementSpace::Build_Dof_TrueDof_Matrix() const // matrix P
          }
          else
          {
-            if (ldsize[i] == 1)
+            const int b = (ldsize[i] > 1) ? ldsize[i] : 1;
+            for (int m = 0; m < b; m++)
             {
-               cmap_j_offd[offd_col_counter].one = GetGlobalTDofNumber(i);
+               const int im = i + m;
+               MFEM_VERIFY(GetLocalTDofNumber(im) < 0 && ldsize[im] == ldsize[i],
+                           "inconsistent dof block in Build_Dof_TrueDof_Matrix");
+               cmap_j_offd[offd_col_counter].one = GetGlobalTDofNumber(im);
                cmap_j_offd[offd_col_counter].two = offd_counter;
-               offd_counter++;
+               offd_counter += b;
                offd_col_counter++;
+               if (m < b-1)
+               {
+                  i_diag[im+1] = diag_counter;
+                  i_offd[im+1] = offd_counter;
+               }
             }
-            else
-            {
-               cmap_j_offd[offd_col_counter].one = GetGlobalTDofNumber(i);
-               cmap_j_offd[offd_col_counter].two = offd_counter;
-               offd_counter += 2;
-               offd_col_counter++;
-               i_diag[i+1] = diag_counter;
-               i_offd[i+1] = offd_counter;
-               i++;
-               cmap_j_offd[offd_col_counter].one = GetGlobalTDofNumber(i);
-               cmap_j_offd[offd_col_counter].two = offd_counter;
-               offd_counter += 2;
-               offd_col_counter++;
-            }
+            i += b-1;
          }
          i_diag[i+1] = diag_counter;
          i_offd[i+1] = offd_counter;
@@ -1021,28 +1645,58 @@ void ParFiniteElementSpace::Build_Dof_TrueDof_Matrix() const // matrix P
          d_offd[i] = 0.0;
       }
 
+      // Each row's first slot gets its own column in the sorted column map.
       for (int i = 0; i < offd_col_counter; i++)
       {
          cmap[i] = cmap_j_offd[i].one;
          j_offd[cmap_j_offd[i].two] = i;
       }
 
+      // Second pass: fill the remaining columns and the values.
       for (int i = 0; i < ldof; i++)
       {
          if (i_offd[i+1] == i_offd[i] + 1)
          {
+            // plain copy
             d_offd[i_offd[i]] = 1.0;
          }
-         else if (i_offd[i+1] == i_offd[i] + 2)
+         else if (i_offd[i+1] > i_offd[i] + 1)
          {
-            const real_t *T =
-               ND_DofTransformation::GetFaceTransform(ltori[i]).GetData();
-            j_offd[i_offd[i] + 1] = j_offd[i_offd[i]] + 1;
-            d_offd[i_offd[i]] = T[0]; d_offd[i_offd[i] + 1] = T[2];
-            i++;
-            j_offd[i_offd[i] + 1] = j_offd[i_offd[i]];
-            j_offd[i_offd[i]] = j_offd[i_offd[i] + 1] - 1;
-            d_offd[i_offd[i]] = T[1]; d_offd[i_offd[i] + 1] = T[3];
+            // block of b dofs: 2 (triangle) or tb (tet)
+            const int b = i_offd[i+1] - i_offd[i];
+
+            const bool tri_block = nd_strias && (b == 2);
+            MFEM_VERIFY(tri_block || (nd_stets && b == tb),
+                        "unexpected dof block size in Build_Dof_TrueDof_Matrix");
+
+            const DenseMatrix &Tm = tri_block ?
+               ND_DofTransformation::GetFaceTransform(ltori[i]) :
+               TetT(ltori[i]);
+            MFEM_VERIFY(Tm.Height() == b && Tm.Width() == b,
+                        "transformation matrix size does not match the "
+                        "dof block size");
+            const real_t *T = Tm.GetData();   // column-major: T(m,l) = T[m + l*b]
+
+            // The b master true dofs have consecutive global numbers, so they
+            // are consecutive columns of the sorted column map. Row i+m holds
+            // its own column in its first slot (set above); with identity
+            // alignment from GetGroupComm that column is c0 + m.
+            const int c0 = j_offd[i_offd[i]];
+            for (int m = 0; m < b; m++)
+            {
+               MFEM_VERIFY(j_offd[i_offd[i+m]] == c0 + m,
+                           "block dofs not aligned with the master's dofs");
+            }
+
+            for (int m = 0; m < b; m++)
+            {
+               for (int l = 0; l < b; l++)
+               {
+                  j_offd[i_offd[i+m] + l] = c0 + l;
+                  d_offd[i_offd[i+m] + l] = T[m + l*b];
+               }
+            }
+            i += b-1;
          }
       }
 
@@ -1055,6 +1709,8 @@ void ParFiniteElementSpace::Build_Dof_TrueDof_Matrix() const // matrix P
    P->GetDiag(Pdiag);
    R = Transpose(Pdiag);
 }
+
+
 
 HypreParMatrix *ParFiniteElementSpace::GetPartialConformingInterpolation()
 {
@@ -1385,7 +2041,7 @@ const Operator *ParFiniteElementSpace::GetProlongationMatrix() const
    {
       if (Pconf) { return Pconf; }
 
-      if (nd_strias) { return Dof_TrueDof_Matrix(); }
+      if (nd_strias || nd_stets) { return Dof_TrueDof_Matrix(); }
 
       if (NRanks == 1)
       {
@@ -2080,6 +2736,116 @@ void ParFiniteElementSpace::GetGhostFaceDofs(const MeshId &face_id,
    }
 }
 
+void ParFiniteElementSpace::GetGhostFaceDofs4D(const MeshId &face_id,
+                                               Array<int> &dofs) const
+{
+   #if 0
+   MFEM_ASSERT(mesh->GetFaceBaseGeometry(0) == Geometry::TETRAHEDRON, "");
+
+   int nv = fec->DofForGeometry(Geometry::POINT);
+   int ne = fec->DofForGeometry(Geometry::SEGMENT);
+   int np = fec->DofForGeometry(Geometry::TRIANGLE);
+   int nf = fec->DofForGeometry(Geometry::TETRAHEDRON);
+   dofs.SetSize(4*nv + 6*ne + 4*np + nf);
+
+   int V[4], E[6], Eo[6], P[4], Po[4];
+   pmesh->pncmesh->GetFaceVerticesEdgesPlanars(face_id, V, E, Eo, P, Po);
+
+   int offset = 0;
+   for (int i = 0; i < 4; i++)
+   {
+      int ghost = pncmesh->GetNVertices();
+      int first = (V[i] < ghost) ? V[i]*nv : (ndofs + (V[i] - ghost)*nv);
+      for (int j = 0; j < nv; j++)
+      {
+         dofs[offset++] = first + j;
+      }
+   }
+
+   for (int i = 0; i < 6; i++)
+   {
+      int ghost = pncmesh->GetNEdges();
+      int first = (E[i] < ghost) ? nvdofs + E[i]*ne
+                  /*          */ : ndofs + ngvdofs + (E[i] - ghost)*ne;
+      const int *ind = fec->DofOrderForOrientation(Geometry::SEGMENT, Eo[i]);
+      for (int j = 0; j < ne; j++)
+      {
+         dofs[offset++] = (ind[j] >= 0) ? (first + ind[j])
+                          /*         */ : (-1 - (first + (-1 - ind[j])));
+      }
+   }
+
+   for (int i = 0; i < 4; i++)
+   {
+      // TODO higher order
+      int ghost = pncmesh->GetNPlanars();
+      int first = (P[i] < ghost) ? nvdofs + nedofs +  P[i]*np
+                  /*          */ : ndofs + ngvdofs + nedofs + ngedofs +  (P[i] - ghost)*np;
+      //      const int *ind = fec->DofOrderForOrientation(Geometry::SEGMENT, Eo[i]);
+      for (int j = 0; j < np; j++)
+      {
+         dofs[offset++] = first + j;
+      }
+   }
+
+   int first = ndofs + ngvdofs + ngedofs +
+               (face_id.index - pncmesh->GetNFaces())*nf;
+   for (int j = 0; j < nf; j++)
+   {
+      dofs[offset++] = first + j;
+   }
+   #endif
+}
+
+void ParFiniteElementSpace::GetGhostPlanarDofs(const MeshId &planar_id,
+                                               Array<int> &dofs) const
+{
+   #if 0
+   MFEM_ASSERT(mesh->GetPlanarBaseGeometry(0) == Geometry::TRIANGLE, "");
+
+   int nv = fec->DofForGeometry(Geometry::POINT);
+   int ne = fec->DofForGeometry(Geometry::SEGMENT);
+   int np = fec->DofForGeometry(Geometry::TRIANGLE);
+   dofs.SetSize(3*nv + 3*ne + np);
+
+   int V[3], E[3], Eo[3];
+   pmesh->pncmesh->GetPlanarVerticesEdges(planar_id, V, E, Eo);
+
+   int offset = 0;
+   for (int i = 0; i < 3; i++)
+   {
+      int ghost = pncmesh->GetNVertices();
+      int first = (V[i] < ghost) ? V[i]*nv : (ndofs + (V[i] - ghost)*nv);
+      for (int j = 0; j < nv; j++)
+      {
+         dofs[offset++] = first + j;
+      }
+   }
+
+   for (int i = 0; i < 3; i++)
+   {
+      int ghost = pncmesh->GetNEdges();
+      int first = (E[i] < ghost) ? nvdofs + E[i]*ne
+                  /*          */ : ndofs + ngvdofs + (E[i] - ghost)*ne;
+      const int *ind = fec->DofOrderForOrientation(Geometry::SEGMENT, Eo[i]);
+      for (int j = 0; j < ne; j++)
+      {
+         dofs[offset++] = (ind[j] >= 0) ? (first + ind[j])
+                          /*         */ : (-1 - (first + (-1 - ind[j])));
+      }
+   }
+
+   int first = ndofs + ngvdofs + ngedofs +
+               (planar_id.index - pncmesh->GetNPlanars())*np;
+   for (int j = 0; j < np; j++)
+   {
+      dofs[offset++] = first + j;
+   }
+   #endif
+}
+
+
+
 void ParFiniteElementSpace::GetGhostDofs(int entity, const MeshId &id,
                                          Array<int> &dofs, int var) const
 {
@@ -2089,6 +2855,19 @@ void ParFiniteElementSpace::GetGhostDofs(int entity, const MeshId &id,
       case 0: GetGhostVertexDofs(id, dofs); break;
       case 1: GetGhostEdgeDofs(id, dofs, var); break;
       case 2: GetGhostFaceDofs(id, dofs); break;
+   }
+}
+
+void ParFiniteElementSpace::GetGhostDofs4D(int entity, const MeshId &id,
+                                           Array<int> &dofs, int var) const
+{
+   // helper to get ghost vertex, ghost edge or ghost face DOFs
+   switch (entity)
+   {
+      case 0: GetGhostVertexDofs(id, dofs); break;
+      case 1: GetGhostEdgeDofs(id, dofs, var); break;
+      case 2: GetGhostPlanarDofs(id, dofs); break;
+      case 3: GetGhostFaceDofs4D(id, dofs); break;
    }
 }
 
@@ -2194,6 +2973,54 @@ void ParFiniteElementSpace::GetBareDofs(int entity, int index,
    {
       dofs[i] = first + i;
    }
+}
+
+void ParFiniteElementSpace::GetBareDofs4D(int entity, int index,
+                                          Array<int> &dofs) const
+{
+   #if 0
+   int ned, ghost, first;
+   switch (entity)
+   {
+      case 0:
+         ned = fec->DofForGeometry(Geometry::POINT);
+         ghost = pncmesh->GetNVertices();
+         first = (index < ghost)
+                 ? index*ned // regular vertex
+                 : ndofs + (index - ghost)*ned; // ghost vertex
+         break;
+
+      case 1:
+         ned = fec->DofForGeometry(Geometry::SEGMENT);
+         ghost = pncmesh->GetNEdges();
+         first = (index < ghost)
+                 ? nvdofs + index*ned // regular edge
+                 : ndofs + ngvdofs + (index - ghost)*ned; // ghost edge
+         break;
+
+      case 2:
+         ned = fec->DofForGeometry(mesh->GetPlanarBaseGeometry(0));
+         ghost = pncmesh->GetNPlanars();
+         first = (index < ghost)
+                 ? nvdofs + nedofs + index*ned
+                 : ndofs + ngvdofs + ngedofs + (index - ghost)*ned;
+         break;
+
+      default:
+         ned = fec->DofForGeometry(mesh->GetFaceBaseGeometry(0));
+         ghost = pncmesh->GetNFaces();
+         first = (index < ghost)
+                 ? nvdofs + nedofs + npdofs + index*ned // regular face
+                 : ndofs + ngvdofs + ngedofs + ngpdofs + (index - ghost)*ned; // ghost
+         break;
+   }
+
+   dofs.SetSize(ned);
+   for (int i = 0; i < ned; i++)
+   {
+      dofs[i] = first + i;
+   }
+   #endif
 }
 
 int ParFiniteElementSpace::PackDofVar(int entity, int index, int edof,
@@ -3638,7 +4465,8 @@ int ParFiniteElementSpace
                                        Array<int> *dof_tdof,
                                        bool partial)
 {
-   const bool dg = (nvdofs == 0 && nedofs == 0 && nfdofs == 0);
+   //const bool dg = (nvdofs == 0 && nedofs == 0 && nfdofs == 0);
+   const bool dg = (nvdofs == 0 && nedofs == 0 && nfdofs == 0 && npdofs == 0);
    const bool H1var = IsVariableOrderH1();
 
 #ifdef MFEM_PMATRIX_STATS
@@ -3760,7 +4588,15 @@ int ParFiniteElementSpace
          GroupId owner = pncmesh->GetEntityOwnerId(entity, id.index);
          GroupId group = pncmesh->GetEntityGroupId(entity, id.index);
 
-         GetBareDofs(entity, id.index, dofs);
+         //GetBareDofs(entity, id.index, dofs);
+         if (pmesh->Dimension() <= 3)
+         {
+             GetBareDofs(entity, id.index, dofs);
+         }
+         else
+         {
+             GetBareDofs4D(entity, id.index, dofs);
+         }
 
          for (auto dof : dofs)
          {

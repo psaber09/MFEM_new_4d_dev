@@ -45,7 +45,7 @@ private:
    mutable int ltdof_size;
 
    /// Number of vertex/edge/face/total ghost DOFs (nonconforming case).
-   int ngvdofs, ngedofs, ngfdofs, ngdofs;
+   int ngvdofs, ngedofs, ngfdofs, ngdofs, ngpdofs;
 
    struct VarOrderDofInfo
    {
@@ -105,6 +105,8 @@ private:
 
    /// Flag indicating the existence of shared triangles with interior ND dofs
    bool nd_strias;
+   /// Flag indicating the existence of shared tetrahedra with interior ND (type) dofs 4D
+   bool nd_stets;
 
    /** Stores the previous ParFiniteElementSpace, before p-refinement, in the
        case that @a PTh is constructed by PRefineAndUpdate(). */
@@ -171,10 +173,16 @@ private:
    void GetGhostFaceDofs(const MeshId &face_id, Array<int> &dofs) const;
    void GetGhostDofs(int entity, const MeshId &id, Array<int> &dofs,
                      int variant) const;
+    
+   void GetGhostFaceDofs4D(const MeshId &face_id, Array<int> &dofs) const;
+   void GetGhostPlanarDofs(const MeshId &planar_id, Array<int> &dofs) const;
+   void GetGhostDofs4D(int entity, const MeshId &id, Array<int> &dofs, int variant) const;
 
    /// Return the dofs associated with the interior of the given mesh entity.
    void GetBareDofs(int entity, int index, Array<int> &dofs) const;
    void GetBareDofsVar(int entity, int index, Array<int> &dofs) const;
+    
+   void GetBareDofs4D(int entity, int index, Array<int> &dofs) const;
 
    /** @brief Return the local space DOF index for the DOF with index @a edof
        with respect to the mesh entity @a index of type @a entity (0: vertex,
@@ -364,6 +372,10 @@ public:
    /** Returns the indexes of the degrees of freedom for i'th face
        including the dofs for the edges and the vertices of the face. */
    int GetFaceDofs(int i, Array<int> &dofs, int variant = 0) const override;
+    
+    /** Returns the indexes of the degrees of freedom for i'th planar
+        including the dofs for the edges and the vertices of the planar. */
+   void GetPlanarDofs(int i, Array<int> &dofs) const override;
 
    /** Returns pointer to the FiniteElement in the FiniteElementCollection
        associated with i'th element in the mesh object. If @a i is greater than
@@ -383,6 +395,8 @@ public:
    void GetSharedEdgeDofs(int group, int ei, Array<int> &dofs) const;
    void GetSharedTriangleDofs(int group, int fi, Array<int> &dofs) const;
    void GetSharedQuadrilateralDofs(int group, int fi, Array<int> &dofs) const;
+    
+   void GetSharedTetrahedronDofs(int group, int fi, Array<int> &dofs) const;
 
    /// The true dof-to-dof interpolation matrix
    HypreParMatrix *Dof_TrueDof_Matrix() const
