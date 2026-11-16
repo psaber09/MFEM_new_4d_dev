@@ -61,8 +61,8 @@ int main(int argc, char *argv[])
    real_t kappa = -1.0;
    real_t eta = 0.0;
    real_t rel_tol = 1e-12;
-   int max_iter = 500;
-   int kdim = 10;
+   int max_iter = 50000;
+   int kdim = 9000;
    bool pa = false;
    bool visualization = true;
    const char *device_config = "cpu";
@@ -141,17 +141,17 @@ int main(int argc, char *argv[])
    }
     
     // Number of elements per rank.
-    {
-       int ne = pmesh.GetNE();
-       Array<int> all(num_procs);
-       MPI_Gather(&ne, 1, MPI_INT, all.GetData(), 1, MPI_INT, 0, MPI_COMM_WORLD);
-       if (myid == 0)
-       {
-          cout << "Elements per rank:";
-          for (int r = 0; r < num_procs; r++) { cout << " " << all[r]; }
-          cout << endl;
-       }
-    }
+//    {
+//       int ne = pmesh.GetNE();
+//       Array<int> all(num_procs);
+//       MPI_Gather(&ne, 1, MPI_INT, all.GetData(), 1, MPI_INT, 0, MPI_COMM_WORLD);
+//       if (myid == 0)
+//       {
+//          cout << "Elements per rank:";
+//          for (int r = 0; r < num_procs; r++) { cout << " " << all[r]; }
+//          cout << endl;
+//       }
+//    }
     
 //    int nsf = pmesh.GetNSharedFaces(), tot = 0;
 //    MPI_Allreduce(&nsf, &tot, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
@@ -243,21 +243,21 @@ int main(int argc, char *argv[])
    //     GMRES solver for A x = b using the BoomerAMG preconditioner.
    bool converged = false;
    int num_iter = 0;
-   if (sigma == -1.0)
-   {
-      CGSolver cg(MPI_COMM_WORLD);
-      cg.SetRelTol(rel_tol);
-      cg.SetAbsTol(0.0);
-      cg.SetMaxIter(max_iter);
-      cg.SetPrintLevel(1);
-      cg.SetOperator(*A);
-      if (amg) { cg.SetPreconditioner(*amg); }
-      cg.Mult(b, x);
-      converged = cg.GetConverged();
-      num_iter = cg.GetNumIterations();
-   }
-   else
-   {
+//   if (sigma == -1.0)
+//   {
+//      CGSolver cg(MPI_COMM_WORLD);
+//      cg.SetRelTol(rel_tol);
+//      cg.SetAbsTol(0.0);
+//      cg.SetMaxIter(max_iter);
+//      cg.SetPrintLevel(1);
+//      cg.SetOperator(*A);
+//      if (amg) { cg.SetPreconditioner(*amg); }
+//      cg.Mult(b, x);
+//      converged = cg.GetConverged();
+//      num_iter = cg.GetNumIterations();
+//   }
+//   else
+//   {
       GMRESSolver gmres(MPI_COMM_WORLD);
       gmres.SetAbsTol(0.0);
       gmres.SetRelTol(rel_tol);
@@ -269,7 +269,7 @@ int main(int argc, char *argv[])
       gmres.Mult(b, x);
       converged = gmres.GetConverged();
       num_iter = gmres.GetNumIterations();
-   }
+   //}
 
    // 13. Report solver convergence and the true relative residual.
    {
